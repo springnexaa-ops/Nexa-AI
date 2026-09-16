@@ -1,4 +1,5 @@
 import worker from "./index-v3";
+import { analyzeUploadedEeg } from "./eeg-analysis";
 
 function bearer(request: Request): string {
   const value = request.headers.get("authorization") || "";
@@ -17,6 +18,17 @@ export default {
     const path = new URL(request.url).pathname;
     const protectedAdmin = path.startsWith("/v1/admin/") && !["/v1/admin/login", "/v1/admin/logout"].includes(path);
     if (protectedAdmin && (!env.ADMIN_TOKEN || bearer(request) !== env.ADMIN_TOKEN)) return unauthorized();
+
+    if (path === "/v1/files/analyze-eeg" && request.method === "POST") {
+      const authRequest = new Request(new URL("/v1/auth/me", request.url), {
+        method: "GET",
+        headers: { authorization: request.headers.get("authorization") || "" },
+      });
+      const auth = await worker.fetch(authRequest, env, ctx);
+      if (!auth.ok) return auth;
+      return analyzeUploadedEeg(request, env);
+    }
+
     return worker.fetch(request, env, ctx);
   },
 };
