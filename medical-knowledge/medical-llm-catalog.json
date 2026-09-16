@@ -1,0 +1,31 @@
+{
+  "purpose": "Architecture and research catalog for Nexa AI medical capabilities. Do not copy third-party model weights or source code into this repository without license review.",
+  "sources": [
+    {"name":"MedLLMsPracticalGuide","repository":"AI-in-Health/MedLLMsPracticalGuide","role":["medical LLM architecture","RAG","clinical applications","evaluation","safety challenges"]},
+    {"name":"Awesome Medical AI","repository":"JuneYaooo/awesome-medical-ai","role":["medical LLM landscape","medical imaging","multi-agent systems","clinical software","biomedical research"]},
+    {"name":"medical-large-language-models topic","repository":"github.com/topics/medical-large-language-models","role":["medical LLM discovery"]}
+  ],
+  "candidateModels": [
+    {"name":"HuatuoGPT","role":"medical dialogue/Q&A","integration":"research reference; hosted inference or licensed deployment only"},
+    {"name":"HuatuoGPT-o1","role":"medical reasoning","integration":"research reference; hosted inference or licensed deployment only"},
+    {"name":"DISC-MedLLM","role":"medical dialogue and clinical record structuring","integration":"research reference; hosted inference or licensed deployment only"},
+    {"name":"Meditron","role":"medical-domain LLM","integration":"research reference; license/model-card review required"},
+    {"name":"BiomedGPT","role":"biomedical multimodal VLM","integration":"research reference for multimodal architecture"},
+    {"name":"Exgra-Med","role":"medical vision-language reasoning","integration":"research reference for VLM pipeline"},
+    {"name":"RxLM-Med-Agent","role":"multimodal medical agent with hierarchical RAG and deterministic calculations","integration":"research reference for agent orchestration"},
+    {"name":"MedReason","role":"knowledge-graph-based medical reasoning","integration":"research reference for verifiable reasoning and retrieval"}
+  ],
+  "nexaArchitecture": [
+    "public authentication",
+    "provider routing",
+    "medical-safe system policy",
+    "retrieval layer",
+    "document/file ingestion",
+    "multimodal vision",
+    "neuro-signal deterministic features",
+    "structured clinical reporting",
+    "evaluation and safety gates",
+    "persistent tenant storage"
+  ],
+  "guardrails": ["no_autonomous_diagnosis","no_prescription","requires_clinical_context","requires_qualified_review","do_not_store_patient_identifiers_in_public_git"]
+}
