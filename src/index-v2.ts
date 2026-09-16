@@ -1,6 +1,7 @@
 import { textToSpeech, speechToText, voiceSpeaker, voiceEncoding, voiceContentType } from "./voice";
 import { withSecurityHeaders, clientIp, rateLimit, isAdminRequest, adminCookie, clearAdminCookie } from "./security";
 import { isMedicalQuery, detectMedicalSpecialties, recommendMedicalProviders } from "./medical-directory";
+import { getMedicalBookContext, MEDICAL_BOOK_KNOWLEDGE_VERSION } from "./medical-book-knowledge";
 
 export interface Env {
   AI: Ai;
@@ -18,7 +19,7 @@ const BRAND = "Nexa AI";
 const POWERED_BY = "SPRINGNEXA PRIVATE LIMITED (IT Division)";
 const COMPANY = "SpringNexa Private Limited";
 const DEFAULT_SYSTEM = `You are Nexa AI, powered by SPRINGNEXA PRIVATE LIMITED (IT Division). Be accurate, useful and concise. Never claim to be a doctor. Do not invent hospitals, doctors, credentials, statistics or citations.`;
-const MEDICAL_SYSTEM = `You are Nexa AI Medical, powered by SPRINGNEXA PRIVATE LIMITED (IT Division). Provide medical education and decision support, not a definitive diagnosis or prescription. Distinguish possibilities from diagnosis. For emergencies advise immediate local medical care. Do not invent clinicians, hospitals or medical records.`;
+const MEDICAL_SYSTEM = `You are Nexa AI Medical, powered by SPRINGNEXA PRIVATE LIMITED (IT Division). Provide medical education and decision support, not a definitive diagnosis or prescription. Distinguish possibilities from diagnosis. For emergencies advise immediate local medical care. Do not invent clinicians, hospitals or medical records. A book-derived EDX knowledge layer is available as reference context; use it as structured educational guidance and preserve uncertainty and clinician review requirements.`;
 const TIMEOUT_MS = 15000;
 const GROQ_FREE = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b", "qwen/qwen3.8-27b"];
 // Keep the Cloudflare-first path on currently documented Workers AI models.
@@ -117,7 +118,7 @@ export default { async fetch(request: Request, env: Env): Promise<Response> {
   if (api && !rateLimit(`${ip}:${url.pathname}`, url.pathname.startsWith("/v1/audio/") ? 20 : 90)) return cors(json({ error: "Too many requests" }, 429));
   let response: Response;
   try {
-    if (url.pathname === "/health" && request.method === "GET") response = cors(json({ ok: true, service: BRAND, poweredBy: POWERED_BY, company: COMPANY, division: "IT Division", runtime: "cloudflare-worker", modes: ["auto", "medical", "voice"] }));
+    if (url.pathname === "/health" && request.method === "GET") response = cors(json({ ok: true, service: BRAND, poweredBy: POWERED_BY, company: COMPANY, division: "IT Division", runtime: "cloudflare-worker", modes: ["auto", "medical", "voice"], medicalKnowledge: MEDICAL_BOOK_KNOWLEDGE_VERSION }));
     else if (url.pathname === "/v1/admin/login" && request.method === "POST") {
       const b: any = await request.json(); const token = typeof b?.token === "string" ? b.token : "";
       if (!env.ADMIN_TOKEN || !token || !isAdminRequest(new Request(request.url, { headers: { authorization: `Bearer ${token}` } }), env.ADMIN_TOKEN)) response = cors(json({ error: "Authentication failed" }, 401));
@@ -125,7 +126,7 @@ export default { async fetch(request: Request, env: Env): Promise<Response> {
     } else if (url.pathname === "/v1/admin/logout" && request.method === "POST") response = cors(json({ ok: true }, 200, { "set-cookie": clearAdminCookie }));
     else if (url.pathname === "/v1/admin/status" && request.method === "GET") {
       if (!isAdminRequest(request, env.ADMIN_TOKEN)) response = cors(json({ error: "Unauthorized" }, 401));
-      else response = cors(json({ ok: true, admin: true, service: BRAND, security: "hardened", secretsConfigured: { groq: !!env.GROQ_API_KEY, google: !!env.GOOGLE_API_KEY, nvidia: !!env.NVIDIA_API_KEY, medical: !!env.HF_TOKEN, elevenlabs: !!env.ELEVENLABS_API_KEY, admin: !!env.ADMIN_TOKEN }, analyticsConfigured: !!env.NEXA_ANALYTICS }));
+      else response = cors(json({ ok: true, admin: true, service: BRAND, security: "hardened", secretsConfigured: { groq: !!env.GROQ_API_KEY, google: !!env.GOOGLE_API_KEY, nvidia: !!env.NVIDIA_API_KEY, medical: !!env.HF_TOKEN, elevenlabs: !!env.ELEVENLABS_API_KEY, admin: !!env.ADMIN_TOKEN }, analyticsConfigured: !!env.NEXA_ANALYTICS, medicalKnowledge: MEDICAL_BOOK_KNOWLEDGE_VERSION }));
     } else if (url.pathname === "/v1/admin/traffic" && request.method === "GET") {
       if (!isAdminRequest(request, env.ADMIN_TOKEN)) response = cors(json({ error: "Unauthorized" }, 401));
       else response = cors(json({ ok: true, configured: !!env.NEXA_ANALYTICS, requests: traffic.requests, errors: traffic.errors, uptimeSeconds: Math.floor((Date.now() - traffic.startedAt) / 1000), lastRequestAt: traffic.lastRequestAt ? new Date(traffic.lastRequestAt).toISOString() : null }));
@@ -144,7 +145,7 @@ export default { async fetch(request: Request, env: Env): Promise<Response> {
       const b: any = await request.json(); if (!b?.image?.data || !b?.image?.mimeType) response = cors(json({ error: "image.data and image.mimeType are required" }, 400)); else { const r = await vision(env, typeof b.prompt === "string" ? b.prompt : "Describe this image accurately and list important visible details.", b.image); response = cors(json({ ...r, brand: BRAND })); }
     } else if (url.pathname === "/v1/chat/completions" && request.method === "POST") {
       const b: any = await request.json(); const msgs = getMessages(b); if (!msgs.some(m => m.role === "user")) response = cors(json({ error: "messages with a user message are required" }, 400));
-      else { const userText = [...msgs].reverse().find(m => m.role === "user")?.content || ""; const requested = typeof b.provider === "string" ? b.provider : typeof b.mode === "string" ? b.mode : "auto"; const medicalMode = requested.toLowerCase() === "medical" || (requested.toLowerCase() === "auto" && isMedicalQuery(userText)); if (!msgs.some(m => m.role === "system")) msgs.unshift({ role: "system", content: (medicalMode ? MEDICAL_SYSTEM : DEFAULT_SYSTEM) + (typeof b.language === "string" ? ` Preferred response language: ${b.language}.` : "") }); const result = await answer(env, msgs, medicalMode ? "medical" : requested, typeof b.model === "string" ? b.model : undefined); response = cors(json({ id: crypto.randomUUID(), object: "chat.completion", created: Math.floor(Date.now() / 1000), brand: BRAND, poweredBy: POWERED_BY, company: COMPANY, provider: result.provider, model: result.model, choices: [{ index: 0, message: { role: "assistant", content: result.content }, finish_reason: "stop" }] })); }
+      else { const userText = [...msgs].reverse().find(m => m.role === "user")?.content || ""; const requested = typeof b.provider === "string" ? b.provider : typeof b.mode === "string" ? b.mode : "auto"; const medicalMode = requested.toLowerCase() === "medical" || (requested.toLowerCase() === "auto" && isMedicalQuery(userText)); if (!msgs.some(m => m.role === "system")) msgs.unshift({ role: "system", content: medicalMode ? `${MEDICAL_SYSTEM}\n\n${getMedicalBookContext(userText)}` + (typeof b.language === "string" ? `\nPreferred response language: ${b.language}.` : "") : DEFAULT_SYSTEM + (typeof b.language === "string" ? ` Preferred response language: ${b.language}.` : "") }); const result = await answer(env, msgs, medicalMode ? "medical" : requested, typeof b.model === "string" ? b.model : undefined); response = cors(json({ id: crypto.randomUUID(), object: "chat.completion", created: Math.floor(Date.now() / 1000), brand: BRAND, poweredBy: POWERED_BY, company: COMPANY, provider: result.provider, model: result.model, choices: [{ index: 0, message: { role: "assistant", content: result.content }, finish_reason: "stop" }] })); }
     } else if (url.pathname === "/v1/telemetry" && request.method === "POST") response = cors(json({ ok: true }));
     else response = await assetPage(env, request);
   } catch (e) { response = cors(json({ error: "AI service temporarily unavailable", detail: e instanceof Error ? e.message : "provider_error" }, 503)); }
