@@ -11,12 +11,35 @@ html,body{margin:0;min-height:100%;background:#071018;color:#edf6ff;font-family:
 </style>
 </head>
 <body>
-<div id="nexa-loader"><div class="box"><img src="/springnexa-logo.svg" alt="SpringNexa"><b>NEXA AI</b><span>Loading your secure AI workspace…</span><i></i></div></div>
+<div id="nexa-loader"><div class="box"><img src="/springnexa-logo.svg" alt="SpringNexa"><b>NEXA AI</b><span id="nexa-loader-text">Loading your secure AI workspace…</span><i></i></div></div>
 <!-- Public consumer AI entry. Administrator Console is intentionally separate. -->
-<script src="/app-functional.js" defer></script>
-<script src="/auth-fetch.js" defer></script>
-<script src="/auth-widget.js" defer></script>
-<script src="/nexa-shell.js" defer></script>
-<script src="/nexa-chat-bridge.js" defer></script>
+<script src="/app-functional.js?v=20260916-1" defer></script>
+<script src="/auth-fetch.js?v=20260916-1" defer></script>
+<script src="/auth-widget.js?v=20260916-1" defer></script>
+<script src="/nexa-shell.js?v=20260916-2" defer></script>
+<script src="/nexa-chat-bridge.js?v=20260916-1" defer></script>
+<script>
+(function(){
+  var started=Date.now(), retried=false;
+  function mountReady(){return !!document.getElementById('nexaConsumer');}
+  function showFailure(message){
+    if(mountReady())return;
+    var t=document.getElementById('nexa-loader-text');
+    if(t)t.textContent=message;
+  }
+  function retryShell(){
+    if(mountReady()||retried)return;
+    retried=true;
+    var s=document.createElement('script');
+    s.src='/nexa-shell.js?v=20260916-bootfix-'+Date.now();
+    s.async=false;
+    s.onerror=function(){showFailure('Nexa AI workspace could not start. Refresh once to retry.');};
+    document.head.appendChild(s);
+    setTimeout(function(){if(!mountReady())showFailure('Nexa AI workspace could not start. Please refresh once.');},2500);
+  }
+  setTimeout(function(){if(!mountReady())retryShell();},1800);
+  setTimeout(function(){if(!mountReady())showFailure('Nexa AI workspace is taking longer than expected…');},900);
+})();
+</script>
 </body>
 </html>
