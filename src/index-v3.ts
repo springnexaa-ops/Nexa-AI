@@ -1,4 +1,5 @@
 import worker from './index-v2';
+import { extractNeuroFeatures, validateNeuroSignal, NEURO_ENGINE_VERSION } from './neuro-signal';
 
 type User={id:string,name:string,email:string,role:string,status:'pending'|'accepted'|'rejected',passwordHash:string,createdAt:string,updatedAt:string};
 type Session={userId:string,expiresAt:number};
@@ -41,7 +42,7 @@ function consumeGuestChat(request:Request){
 }
 function guestRemaining(request:Request){const q=guestChats.get(guestKey(request));return Math.max(0,GUEST_LIMIT-(q?.count||0))}
 function guestResponseHeaders(response:Response,remaining:number){const h=new Headers(response.headers);h.set('X-Nexa-Guest-Remaining',String(remaining));h.set('X-Nexa-Guest-Limit',String(GUEST_LIMIT));return new Response(response.body,{status:response.status,statusText:response.statusText,headers:h})}
-function publicProtected(path:string){return path==='/v1/chat/completions'||path==='/v1/audio/speech'||path==='/v1/audio/transcriptions'||path==='/v1/vision'||path==='/v1/telemetry'}
+function publicProtected(path:string){return path==='/v1/chat/completions'||path==='/v1/audio/speech'||path==='/v1/audio/transcriptions'||path==='/v1/vision'||path==='/v1/telemetry'||path==='/v1/neuro/features'}
 async function authApi(request:Request,env:any,url:URL):Promise<Response|null>{
   if(url.pathname==='/v1/auth/register'&&request.method==='POST'){
     const b:any=await request.json().catch(()=>({}));const name=clean(b.name,100),email=clean(b.email,160).toLowerCase(),password=String(b.password||'');
@@ -82,6 +83,17 @@ async function publicAssets(request:Request,env:any){
 }
 export default{async fetch(request:Request,env:any):Promise<Response>{
   const url=new URL(request.url);const a=await authApi(request,env,url);if(a)return a;
+  if(url.pathname==='/v1/neuro/features'&&request.method==='POST'){
+    const user=userFromRequest(request);
+    if(!user)return json({error:'Authentication required',code:'AUTH_REQUIRED',login:'/auth.html'},401);
+    if(request.headers.get('content-length')&&Number(request.headers.get('content-length'))>4_000_000)return json({error:'Signal payload too large.'},413);
+    const body:any=await request.json().catch(()=>null);
+    if(!body)return json({error:'Invalid JSON payload.'},400);
+    const errors=validateNeuroSignal(body);
+    if(errors.length)return json({error:'Invalid neuro signal.',details:errors},400);
+    try{return json({ok:true,engine:'nexa-neurosignal',version:NEURO_ENGINE_VERSION,modality:body.modality,features:extractNeuroFeatures(body),disclaimer:'Signal features are computational measurements, not a diagnosis.'});}
+    catch(e){return json({error:e instanceof Error?e.message:'Signal analysis failed.'},400);}
+  }
   if(publicProtected(url.pathname)){
     const user=userFromRequest(request);
     if(!user&&url.pathname==='/v1/chat/completions'){
