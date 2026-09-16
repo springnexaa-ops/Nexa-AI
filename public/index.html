@@ -11,20 +11,12 @@ html,body{margin:0;min-height:100%;background:#071018;color:#edf6ff;font-family:
 </style>
 </head>
 <body>
-<div id="nexa-loader"><div class="box"><img src="/springnexa-logo.svg" alt="SpringNexa"><b>NEXA AI</b><span id="nexa-loader-text">Starting secure AI workspace…</span><i></i></div></div>
-<script>window.__NEXA_BOOT__={startedAt:Date.now()};window.addEventListener('error',function(e){var s=document.getElementById('nexa-loader-text');if(s)s.textContent='Nexa AI startup error: '+(e.message||'unknown JavaScript error')});</script>
-<script src="/app-functional.js?v=20260916-1005" defer></script>
-<script src="/auth-fetch.js?v=20260916-1005" defer></script>
-<script src="/auth-widget.js?v=20260916-1005" defer></script>
-<script src="/nexa-shell.js?v=20260916-1005" defer></script>
-<script src="/nexa-chat-bridge.js?v=20260916-1005" defer></script>
-<script>
-setTimeout(function(){
-  if(document.getElementById('nexaConsumer'))return;
-  var s=document.getElementById('nexa-loader-text');if(s)s.textContent='Refreshing Nexa AI frontend…';
-  var el=document.createElement('script');el.src='/nexa-shell.js?retry='+Date.now();el.onload=function(){if(!document.getElementById('nexaConsumer')&&s)s.textContent='Nexa AI frontend failed to initialize.'};el.onerror=function(){if(s)s.textContent='Nexa AI frontend failed to load.'};document.body.appendChild(el);
-},1800);
-setTimeout(function(){if(!document.getElementById('nexaConsumer')){var s=document.getElementById('nexa-loader-text');if(s)s.textContent='Nexa AI frontend failed to initialize. Please refresh once.'}},6500);
-</script>
+<div id="nexa-loader"><div class="box"><img src="/springnexa-logo.svg" alt="SpringNexa"><b>NEXA AI</b><span>Loading your secure AI workspace…</span><i></i></div></div>
+<!-- Public consumer AI entry. Administrator Console is intentionally separate. -->
+<script src="/app-functional.js" defer></script>
+<script src="/auth-fetch.js" defer></script>
+<script src="/auth-widget.js" defer></script>
+<script src="/nexa-shell.js" defer></script>
+<script src="/nexa-chat-bridge.js" defer></script>
 </body>
 </html>

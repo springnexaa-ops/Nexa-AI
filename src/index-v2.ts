@@ -23,12 +23,8 @@ const TIMEOUT_MS = 15000;
 const GROQ_FREE = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b", "qwen/qwen3.8-27b"];
 // Keep the Cloudflare-first path on currently documented Workers AI models.
 const CLOUDFLARE_FREE = ["@cf/zai-org/glm-4.7-flash", "@cf/nvidia/nemotron-3-120b-a12b", "@cf/google/gemma-4-26b-a4b-it"];
-// Medical mode uses a current Workers AI model with a medical safety prompt when a
-// dedicated medical inference endpoint is not available. A custom MEDICAL_MODEL
-// can still explicitly select a Hugging Face/OpenAI-compatible medical endpoint.
-const MEDICAL_CLOUDFLARE = ["@cf/google/gemma-4-26b-a4b-it", "@cf/zai-org/glm-4.7-flash"];
 const GOOGLE_FREE = ["gemini-3.1-flash-lite-preview", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
-const MEDICAL_DEFAULT = "@cf/google/gemma-4-26b-a4b-it";
+const MEDICAL_DEFAULT = "google/medgemma-27b-it";
 const VOICE_LANGUAGE_NAMES: Record<string, string> = { en: "English", hi: "Hindi", ur: "Urdu", ks: "Kashmiri", doi: "Dogri", goj: "Gojri" };
 const traffic = { requests: 0, errors: 0, startedAt: Date.now(), lastRequestAt: 0 };
 
@@ -73,12 +69,8 @@ async function vision(env: Env, prompt: string, image: { mimeType: string; data:
   if (!c) throw new Error("vision:invalid_response"); return { content: c, provider: "google", model };
 }
 async function medical(env: Env, msgs: Message[], model: string): Promise<ProviderResult> {
-  // A dedicated MedGemma endpoint is not currently exposed by Hugging Face
-  // Inference Providers for google/medgemma-27b-it. Use current Workers AI for
-  // medical mode by default, while retaining explicit custom-model support.
-  if (model.startsWith("@cf/")) return cloudflare(env, msgs, model);
-  if (env.HF_TOKEN && env.MEDICAL_MODEL) return openAI(env.HF_TOKEN, "https://router.huggingface.co/v1/chat/completions", model, msgs, "medical");
-  return cloudflare(env, msgs, MEDICAL_DEFAULT);
+  if (!env.HF_TOKEN) throw new Error("medical:not_configured");
+  return openAI(env.HF_TOKEN, "https://router.huggingface.co/v1/chat/completions", model, msgs, "medical");
 }
 async function answer(env: Env, msgs: Message[], provider = "auto", requestedModel?: string): Promise<ProviderResult> {
   const errors: string[] = []; const selected = provider.toLowerCase();
@@ -86,19 +78,8 @@ async function answer(env: Env, msgs: Message[], provider = "auto", requestedMod
   for (const p of order) {
     try {
       if (p === "medical") {
-        const medicalModels = requestedModel ? [requestedModel] : (env.MEDICAL_MODEL ? [env.MEDICAL_MODEL] : MEDICAL_CLOUDFLARE);
-        for (const m of medicalModels) {
-          try { return await medical(env, msgs, m); } catch (e) { errors.push(e instanceof Error ? e.message : "medical:error"); }
-        }
-        // If a configured dedicated medical endpoint is unavailable, keep the
-        // product usable by falling through to the configured general providers.
-        for (const fallback of ["google", "groq", "nvidia"]) {
-          try {
-            if (fallback === "google" && env.GOOGLE_API_KEY) for (const m of env.GOOGLE_MODEL ? [env.GOOGLE_MODEL] : GOOGLE_FREE) return await google(env, msgs, m);
-            if (fallback === "groq" && env.GROQ_API_KEY) for (const m of env.GROQ_MODEL ? [env.GROQ_MODEL] : GROQ_FREE) return await openAI(env.GROQ_API_KEY, "https://api.groq.com/openai/v1/chat/completions", m, msgs, "groq");
-            if (fallback === "nvidia" && env.NVIDIA_API_KEY) return await openAI(env.NVIDIA_API_KEY, "https://integrate.api.nvidia.com/v1/chat/completions", env.NVIDIA_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b", msgs, "nvidia");
-          } catch (e) { errors.push(e instanceof Error ? e.message : `${fallback}:error`); }
-        }
+        try { return await medical(env, msgs, requestedModel || env.MEDICAL_MODEL || MEDICAL_DEFAULT); }
+        catch (e) { errors.push(e instanceof Error ? e.message : "medical:error"); }
         continue;
       }
       if (p === "cloudflare") for (const model of requestedModel?.startsWith("@cf/") ? [requestedModel] : CLOUDFLARE_FREE) try { return await cloudflare(env, msgs, model); } catch (e) { errors.push(e instanceof Error ? e.message : "cloudflare:error"); }
@@ -151,12 +132,22 @@ export default { async fetch(request: Request, env: Env): Promise<Response> {
     } else if (url.pathname === "/v1/models" && request.method === "GET") response = cors(json({ brand: BRAND, poweredBy: POWERED_BY, models: [{ id: "auto", name: "Nexa AI Auto", type: "general" }, { id: "medical", name: "Nexa AI Medical", type: "medical" }, { id: "voice", name: "Nexa Voice", type: "voice" }] }));
     else if (url.pathname === "/v1/medical/specialties" && request.method === "GET") response = cors(json({ specialties: detectMedicalSpecialties(url.searchParams.get("q") || ""), directory: "verified-only" }));
     else if (url.pathname === "/v1/medical/providers" && request.method === "GET") response = cors(json(recommendMedicalProviders(url.searchParams.get("q") || "", url.searchParams.get("location") || "", (url.searchParams.get("type") as any) || undefined)));
-    else if (url.pathname === "/v1/voice/capabilities" && request.method === "GET") response = cors(json({ brand: BRAND, product: "Nexa Voice", speechToText: true }));
-    else if (url.pathname === "/v1/chat/completions" && request.method === "POST") {
-      const body: any = await request.json().catch(() => ({})); const messages = getMessages(body); const userText = [...messages].reverse().find(m => m.role === "user")?.content || ""; const requested = typeof body?.mode === "string" ? body.mode : "auto"; const medicalMode = requested.toLowerCase() === "medical" || (requested.toLowerCase() === "auto" && isMedicalQuery(userText)); const base = medicalMode ? MEDICAL_SYSTEM : DEFAULT_SYSTEM; const normalized = messages.some(m => m.role === "system") ? messages : [{ role: "system", content: base }, ...messages]; if (messages.some(m => m.role === "system")) normalized.unshift({ role: "system", content: base });
-      const result = await answer(env, normalized, medicalMode ? "medical" : "auto", typeof body?.model === "string" ? body.model : undefined); track(env, url.pathname, 200, result.provider); response = cors(json({ id: crypto.randomUUID(), object: "chat.completion", choices: [{ index: 0, message: { role: "assistant", content: result.content }, finish_reason: "stop" }], model: result.model, provider: result.provider }));
-    } else if (url.pathname === "/v1/telemetry" && request.method === "POST") { const b = await request.json().catch(() => ({})); try { env.NEXA_ANALYTICS?.writeDataPoint({ blobs: ["client", String((b as any)?.event || "unknown")], doubles: [1] }); } catch {} response = cors(json({ ok: true })); }
+    else if (url.pathname === "/v1/voice/capabilities" && request.method === "GET") response = cors(json({ brand: BRAND, product: "Nexa Voice", speechToText: true, textToSpeech: true, translationToEnglish: true, providers: { elevenlabs: !!env.ELEVENLABS_API_KEY, cloudflare: true }, languages: ["en", "hi", "ur", "doi", "ks", "goj"], formats: ["mp3", "opus", "wav"] }));
+    else if (url.pathname === "/v1/audio/speech" && request.method === "POST") {
+      const b: any = await request.json(); const text = typeof b?.input === "string" ? b.input : typeof b?.text === "string" ? b.text : "";
+      if (!text.trim()) response = cors(json({ error: "input is required" }, 400)); else { const enc = voiceEncoding(b?.response_format || b?.format); const a = await textToSpeech(env, text, voiceSpeaker(b?.voice), enc); response = cors(new Response(a.body, { status: a.status, headers: { "content-type": voiceContentType(enc), "cache-control": "no-store", "x-nexa-product": "Nexa Voice" } })); }
+    } else if (url.pathname === "/v1/audio/transcriptions" && request.method === "POST") {
+      const ct = request.headers.get("content-type") || ""; let audio: ArrayBuffer; let language: string | undefined;
+      if (ct.includes("multipart/form-data")) { const f = await request.formData(), file = f.get("file"); if (!(file instanceof File)) response = cors(json({ error: "audio file is required" }, 400)); else { audio = await file.arrayBuffer(); language = typeof f.get("language") === "string" ? String(f.get("language")) : undefined; const r = await speechToText(env, audio, language); let englishText = r.text; let translationProvider = "none"; let translationModel = "identity"; if (r.text && language && language.toLowerCase().slice(0,2) !== "en") { const tr = await translateToEnglish(env, r.text, language); englishText = tr.content; translationProvider = tr.provider; translationModel = tr.model; } response = cors(json({ brand: BRAND, product: "Nexa Voice", language: language || "auto", text: r.text, englishText, wordCount: r.wordCount, vtt: r.vtt, translation: { target: "en", provider: translationProvider, model: translationModel } })); } }
+      else { audio = await request.arrayBuffer(); language = url.searchParams.get("language") || undefined; const r = await speechToText(env, audio, language); let englishText = r.text; let translationProvider = "none"; let translationModel = "identity"; if (r.text && language && language.toLowerCase().slice(0,2) !== "en") { const tr = await translateToEnglish(env, r.text, language); englishText = tr.content; translationProvider = tr.provider; translationModel = tr.model; } response = cors(json({ brand: BRAND, product: "Nexa Voice", language: language || "auto", text: r.text, englishText, wordCount: r.wordCount, vtt: r.vtt, translation: { target: "en", provider: translationProvider, model: translationModel } })); }
+    } else if (url.pathname === "/v1/vision" && request.method === "POST") {
+      const b: any = await request.json(); if (!b?.image?.data || !b?.image?.mimeType) response = cors(json({ error: "image.data and image.mimeType are required" }, 400)); else { const r = await vision(env, typeof b.prompt === "string" ? b.prompt : "Describe this image accurately and list important visible details.", b.image); response = cors(json({ ...r, brand: BRAND })); }
+    } else if (url.pathname === "/v1/chat/completions" && request.method === "POST") {
+      const b: any = await request.json(); const msgs = getMessages(b); if (!msgs.some(m => m.role === "user")) response = cors(json({ error: "messages with a user message are required" }, 400));
+      else { const userText = [...msgs].reverse().find(m => m.role === "user")?.content || ""; const requested = typeof b.provider === "string" ? b.provider : typeof b.mode === "string" ? b.mode : "auto"; const medicalMode = requested.toLowerCase() === "medical" || (requested.toLowerCase() === "auto" && isMedicalQuery(userText)); if (!msgs.some(m => m.role === "system")) msgs.unshift({ role: "system", content: (medicalMode ? MEDICAL_SYSTEM : DEFAULT_SYSTEM) + (typeof b.language === "string" ? ` Preferred response language: ${b.language}.` : "") }); const result = await answer(env, msgs, medicalMode ? "medical" : requested, typeof b.model === "string" ? b.model : undefined); response = cors(json({ id: crypto.randomUUID(), object: "chat.completion", created: Math.floor(Date.now() / 1000), brand: BRAND, poweredBy: POWERED_BY, company: COMPANY, provider: result.provider, model: result.model, choices: [{ index: 0, message: { role: "assistant", content: result.content }, finish_reason: "stop" }] })); }
+    } else if (url.pathname === "/v1/telemetry" && request.method === "POST") response = cors(json({ ok: true }));
     else response = await assetPage(env, request);
-  } catch (e) { const message = e instanceof Error ? e.message : "internal_error"; track(env, url.pathname, 500); response = cors(json({ error: message.includes(":") ? `AI service temporarily unavailable (${message})` : message }, 500)); }
-  return response;
-}};
+  } catch (e) { response = cors(json({ error: "AI service temporarily unavailable", detail: e instanceof Error ? e.message : "provider_error" }, 503)); }
+  if (api) track(env, url.pathname, response.status);
+  return withSecurityHeaders(response);
+} };
