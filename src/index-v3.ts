@@ -1,4 +1,5 @@
 import worker from './index-v2';
+import { inspectUploadedFile } from './file-intelligence';
 
 type User={id:string,name:string,email:string,role:string,status:'pending'|'accepted'|'rejected',passwordHash:string,createdAt:string,updatedAt:string};
 type Session={userId:string,expiresAt:number};
@@ -78,10 +79,13 @@ async function publicAssets(request:Request,env:any){
   let injected=sanitized.includes('/auth-widget.js')?sanitized:sanitized.replace('</body>','<script src="/auth-widget.js" defer></script></body>');
   if(!injected.includes('/auth-fetch.js'))injected=injected.replace('</body>','<script src="/auth-fetch.js" defer></script></body>');
   if(!injected.includes('/nexa-shell.js'))injected=injected.replace('</body>','<script src="/nexa-shell.js" defer></script></body>');
+  if(!injected.includes('/file-upload-fix.js'))injected=injected.replace('</body>','<script src="/file-upload-fix.js" defer></script></body>');
   const h=new Headers(response.headers);h.delete('content-length');h.set('cache-control','no-store');return new Response(injected,{status:response.status,statusText:response.statusText,headers:h});
 }
 export default{async fetch(request:Request,env:any):Promise<Response>{
-  const url=new URL(request.url);const a=await authApi(request,env,url);if(a)return a;
+  const url=new URL(request.url);
+  if(url.pathname==='/v1/files/inspect'&&request.method==='POST')return inspectUploadedFile(request);
+  const a=await authApi(request,env,url);if(a)return a;
   if(publicProtected(url.pathname)){
     const user=userFromRequest(request);
     if(!user&&url.pathname==='/v1/chat/completions'){
