@@ -32,6 +32,13 @@ function cors(response: Response): Response {
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
+function withClearSiteData(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set("Clear-Site-Data", '"cache", "cookies", "storage"');
+  headers.set("cache-control", "no-store");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function getMessages(body: any): ChatMessage[] {
   const messages = Array.isArray(body?.messages) ? body.messages : [];
   return messages
@@ -61,14 +68,27 @@ async function handleBedrock(request: Request, env: any): Promise<Response> {
 
 export default {
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
-    const path = new URL(request.url).pathname;
+    const requestUrl = new URL(request.url);
+    const path = requestUrl.pathname;
+
+    // Enforce HTTPS at the Worker as a second layer behind Cloudflare SSL/TLS settings.
+    if (requestUrl.protocol === "http:") {
+      requestUrl.protocol = "https:";
+      return new Response(null, { status: 301, headers: { location: requestUrl.toString(), "cache-control": "public, max-age=3600" } });
+    }
+
     const protectedAdmin = path.startsWith("/v1/admin/") && !["/v1/admin/login", "/v1/admin/logout"].includes(path);
     if (protectedAdmin && (!env.ADMIN_TOKEN || bearer(request) !== env.ADMIN_TOKEN)) return unauthorized();
 
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
 
+    // CSP Reporting API endpoint. Reports contain browser diagnostics only; do not persist them here.
+    if (path === "/v1/security/report" && request.method === "POST") {
+      return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
+    }
+
     // Cache only non-personalized, read-only metadata endpoints. Authenticated/cookie-bearing requests bypass this layer.
-    if (isCacheableGet(request) && path !== "/v1/bedrock/status") {
+    if (isCacheableGet(request)) {
       return cachedGet(request, ctx, () => worker.fetch(request, env, ctx));
     }
 
@@ -106,6 +126,8 @@ export default {
       return analyzeUploadedEeg(request, env);
     }
 
-    return worker.fetch(request, env, ctx);
+    const response = await worker.fetch(request, env, ctx);
+    if ((path === "/v1/admin/logout" || path === "/v1/auth/logout") && request.method === "POST") return withClearSiteData(response);
+    return response;
   },
 };
