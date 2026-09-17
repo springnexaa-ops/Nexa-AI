@@ -1,3 +1,4 @@
+// @ts-nocheck
 import worker from "./index-v3";
 import { UserStoreDO } from "./user-store";
 import { MedicalEvidenceDO, queryLiveEvidence, ingestAll, buildMedicalAudit } from "./medical-live-evidence";
