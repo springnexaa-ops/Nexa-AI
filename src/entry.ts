@@ -5,8 +5,7 @@ import { bedrockChat, bedrockConfigured, bedrockModel, bedrockRegion } from "./b
 import { cachedGet, isCacheableGet } from "./cache";
 import { weatherResponse } from "./weather";
 import { isMedicalQuery } from "./medical-directory";
-import { getMedicalBookContext } from "./medical-book-knowledge";
-import { getMedicalSourceContext } from "./medical-open-source-registry";
+import { getMedicalEvidenceContext, buildMedicalEvidencePack } from "./medical-evidence-engine";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -75,13 +74,12 @@ async function enhanceMedicalRequest(request: Request): Promise<Request> {
   const userText = [...messages].reverse().find(m => m.role === "user")?.content || "";
   const medicalMode = explicitMode === "medical" || isMedicalQuery(userText);
   if (!medicalMode) return request;
-  const bookContext = getMedicalBookContext(userText);
-  const sourceContext = getMedicalSourceContext(userText);
-  const instruction = `NEXA MEDICAL EVIDENCE INSTRUCTION: Answer medical questions using the supplied structured neurophysiology reference when relevant and the authoritative/open medical source registry below. Do not claim that a source, dataset or book is a licence or regulatory approval. Prefer current authoritative guidance and preserve source/version provenance. For patient-specific reports, explain supplied observations directly when sufficient data are present; separate observations, physiologic/clinical interpretation, possible localization or pattern, limitations and clinician-review points. Do not invent missing measurements, reference ranges, citations, records, diagnoses or treatment decisions. If data are insufficient, state exactly what is missing and still provide useful educational information. Never give a blanket refusal merely because the question concerns an NCS, EMG, EDX, EEG, imaging, laboratory result or other medical report.\n\n${bookContext}\n\n${sourceContext}`;
+  const evidenceContext = getMedicalEvidenceContext(userText);
+  const instruction = `NEXA MEDICAL EVIDENCE RAG INSTRUCTION: Use the evidence pack below as retrieval context. Prefer authoritative, current, traceable sources. Treat source presence as evidence retrieval, not as regulatory approval. For patient-specific reports, separate supplied observations, evidence-supported interpretation, possible localization/pattern, uncertainty, limitations and clinician-review points. Do not invent missing measurements, reference ranges, citations, records, diagnoses or treatment decisions. If evidence is insufficient, say what is missing and still provide useful educational information. Never issue a blanket refusal merely because the question concerns an NCS, EMG, EDX, EEG, imaging, laboratory result or other medical report. Respect all source licence and redistribution restrictions.\n\n${evidenceContext}`;
   const existing = messages.find(m => m.role === "system");
   if (existing) existing.content = `${existing.content}\n\n${instruction}`;
   else messages.unshift({ role: "system", content: instruction });
-  const next = { ...body, messages };
+  const next = { ...body, messages, metadata: { ...(body.metadata || {}), nexaEvidenceRag: "1.0.0" } };
   return new Request(request, { body: JSON.stringify(next) });
 }
 
@@ -98,12 +96,17 @@ export default {
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
     if (path === "/v1/security/report" && request.method === "POST") return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
     if (path === "/v1/weather" && request.method === "GET") return cors(await weatherResponse(request));
+    if (path === "/v1/medical/evidence" && request.method === "GET") {
+      const query = requestUrl.searchParams.get("q") || "general medicine";
+      const pack = buildMedicalEvidencePack(query);
+      return cors(json(pack, 200, { "x-nexa-evidence-engine": "1.0.0" }));
+    }
     if (isCacheableGet(request)) return cachedGet(request, ctx, () => worker.fetch(request, env, ctx));
     if (path === "/v1/chat/completions" && request.method === "POST") {
       try {
         request = await enhanceMedicalRequest(request);
       } catch {
-        // Preserve the original request if enhancement fails; the worker still handles the request normally.
+        // Preserve the original request if evidence enrichment fails; the worker still handles the request normally.
       }
       const body: any = await request.clone().json().catch(() => ({}));
       const provider = typeof body?.provider === "string" ? body.provider.toLowerCase() : typeof body?.mode === "string" ? body.mode.toLowerCase() : "";
