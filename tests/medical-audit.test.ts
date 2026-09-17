@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { validateCitations } from "../src/medical-live-evidence";
+import { validateCitations } from "../src/medical-citation-validator";
 
 const hits:any[]=[
   {chunkId:"source:v1:0",sourceId:"source",title:"Test Source",authority:"Test",url:"https://example.com",text:"Evidence",score:1,version:"v1",retrievedAt:"2026-09-17T00:00:00.000Z"}
