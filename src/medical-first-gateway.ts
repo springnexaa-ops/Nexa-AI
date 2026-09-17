@@ -20,40 +20,45 @@ function evidenceContext(hits: any[]): string {
   ].join("\n\n");
 }
 
+function sanitizeMedicalResponse(response: Response, evidenceCount: number): Response {
+  const headers = new Headers(response.headers);
+  headers.set("x-nexa-medical-retrieval", "primary");
+  headers.set("x-nexa-medical-evidence-count", String(evidenceCount));
+  if (response.status < 500) return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  return new Response(JSON.stringify({
+    error: "Nexa Medical is temporarily unavailable",
+    code: "NEXA_MEDICAL_UNAVAILABLE",
+    message: "The medical service could not complete this request. Please try again shortly."
+  }), { status: 503, headers: new Headers({ ...Object.fromEntries(headers), "content-type": "application/json; charset=utf-8", "cache-control": "no-store" }) });
+}
+
 export default {
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname !== "/v1/chat/completions" || request.method !== "POST") return worker.fetch(request, env, ctx);
 
-    try {
-      const body: any = await request.clone().json();
-      const messages: Message[] = Array.isArray(body?.messages) ? body.messages.filter((m: any) => m && typeof m.content === "string") : [];
-      const userText = [...messages].reverse().find(m => m.role === "user")?.content || "";
-      if (!looksLikeMedical(userText)) return worker.fetch(request, env, ctx);
+    const body: any = await request.clone().json().catch(() => ({}));
+    const messages: Message[] = Array.isArray(body?.messages) ? body.messages.filter((m: any) => m && typeof m.content === "string") : [];
+    const userText = [...messages].reverse().find(m => m.role === "user")?.content || "";
+    if (!looksLikeMedical(userText)) return worker.fetch(request, env, ctx);
 
-      const hits = await queryLiveEvidence(env, userText, 8);
-      const system = [
-        getMedicalBookContext(userText),
-        evidenceContext(hits),
-        "NEXA MEDICAL ROUTING: This is a medical request. The internal NEXA medical knowledge/evidence layer has been queried before generation. Answer from the supplied NEXA context first. Patient-specific NCS/EMG interpretation must use only measurements actually provided; never fabricate absent values or reference ranges. Separate observations, interpretation, localization/pattern, limitations, and clinician-review requirements."
-      ].join("\n\n");
+    let hits: any[] = [];
+    try { hits = await queryLiveEvidence(env, userText, 8); } catch {}
 
-      const priorSystem = messages.find(m => m.role === "system")?.content || "";
-      const rebuilt: Message[] = [
-        { role: "system", content: `${priorSystem ? priorSystem + "\n\n" : ""}${system}` },
-        ...messages.filter(m => m.role !== "system")
-      ];
-      const nextBody = { ...body, mode: "medical", provider: "medical", messages: rebuilt };
-      const nextRequest = new Request(request, { body: JSON.stringify(nextBody) });
-      const response = await worker.fetch(nextRequest, env, ctx);
-      const headers = new Headers(response.headers);
-      headers.set("x-nexa-medical-retrieval", "primary");
-      headers.set("x-nexa-medical-evidence-count", String(hits.length));
-      return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
-    } catch {
-      // Preserve the existing authenticated/public request handling if retrieval cannot be performed.
-      // The underlying medical path still provides its normal response and audit behavior.
-      return worker.fetch(request, env, ctx);
-    }
+    const system = [
+      getMedicalBookContext(userText),
+      evidenceContext(hits),
+      "NEXA MEDICAL ROUTING: This is a medical request. The internal NEXA medical knowledge/evidence layer has been queried before generation. Answer from the supplied NEXA context first. Patient-specific NCS/EMG interpretation must use only measurements actually provided; never fabricate absent values or reference ranges. Separate observations, interpretation, localization/pattern, limitations, and clinician-review requirements."
+    ].join("\n\n");
+
+    const priorSystem = messages.find(m => m.role === "system")?.content || "";
+    const rebuilt: Message[] = [
+      { role: "system", content: `${priorSystem ? priorSystem + "\n\n" : ""}${system}` },
+      ...messages.filter(m => m.role !== "system")
+    ];
+    const nextBody = { ...body, mode: "medical", provider: "medical", messages: rebuilt };
+    const nextRequest = new Request(request, { body: JSON.stringify(nextBody) });
+    const response = await worker.fetch(nextRequest, env, ctx);
+    return sanitizeMedicalResponse(response, hits.length);
   }
 };
