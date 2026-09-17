@@ -9,8 +9,9 @@ const GUEST_LIMIT=10, SESSION_MS=24*60*60*1000, encoder=new TextEncoder();
 const clean=(v:any,max=200)=>String(v??'').trim().slice(0,max);
 const json=(body:any,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 const makeId=()=>crypto.randomUUID();
-async function hashPassword(password:string){const salt=crypto.getRandomValues(new Uint8Array(16));const key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:120000,hash:'SHA-256'},key,256);const b64=(b:ArrayBuffer)=>btoa(String.fromCharCode(...new Uint8Array(b)));return `${b64(salt)}.${b64(bits)}`;}
-async function verifyPassword(password:string,stored:string){try{const [s,p]=stored.split('.');if(!s||!p)return false;const salt=Uint8Array.from(atob(s),c=>c.charCodeAt(0));const expected=Uint8Array.from(atob(p),c=>c.charCodeAt(0));const key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);const bits=new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:120000,hash:'SHA-256'},key,256));return bits.length===expected.length&&bits.every((v,i)=>v===expected[i]);}catch{return false}}
+function bytesToBase64(bytes:Uint8Array){let binary='';for(const byte of bytes)binary+=String.fromCharCode(byte);return btoa(binary)}
+async function hashPassword(password:string){const salt=crypto.getRandomValues(new Uint8Array(16));const key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:60000,hash:'SHA-256'},key,256);return `${bytesToBase64(salt)}.${bytesToBase64(new Uint8Array(bits))}`;}
+async function verifyPassword(password:string,stored:string){try{const [s,p]=stored.split('.');if(!s||!p)return false;const salt=Uint8Array.from(atob(s),c=>c.charCodeAt(0));const expected=Uint8Array.from(atob(p),c=>c.charCodeAt(0));const key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);const bits=new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',salt,iterations:60000,hash:'SHA-256'},key,256));return bits.length===expected.length&&bits.every((v,i)=>v===expected[i]);}catch{return false}}
 const publicUser=(u:User)=>({id:u.id,name:u.name,email:u.email,role:u.role,status:u.status,createdAt:u.createdAt,updatedAt:u.updatedAt});
 function tokenFrom(request:Request){const h=request.headers.get('authorization')||'';return h.startsWith('Bearer ')?h.slice(7):''}
 function userFromRequest(request:Request){const t=tokenFrom(request),s=sessions.get(t);if(!s||s.expiresAt<Date.now()){if(t)sessions.delete(t);return null}return users.get(s.userId)||null}
@@ -27,7 +28,19 @@ async function authApi(request:Request,env:any,url:URL):Promise<Response|null>{
     if(url.pathname==='/v1/files/analyze')return analyzeFile(request,env);
     return inspectUploadedFile(request);
   }
-  if(url.pathname==='/v1/auth/register'&&request.method==='POST'){const b:any=await request.json().catch(()=>({}));const name=clean(b.name,100),email=clean(b.email,160).toLowerCase(),password=String(b.password||'');if(!name||!email.includes('@')||password.length<10)return json({error:'Name, valid email and a password of at least 10 characters are required.'},400);if([...users.values()].some(u=>u.email===email))return json({error:'An account with this email already exists.'},409);const now=new Date().toISOString();const u:User={id:makeId(),name,email,role:'User',status:'pending',passwordHash:await hashPassword(password),createdAt:now,updatedAt:now};users.set(u.id,u);return json({ok:true,status:'pending',message:'Registration received. Your account is pending approval.',user:publicUser(u)},201)}
+  if(url.pathname==='/v1/auth/register'&&request.method==='POST'){
+    try{
+      const b:any=await request.json().catch(()=>({}));
+      const name=clean(b.name,100),email=clean(b.email,160).toLowerCase(),password=String(b.password||'');
+      if(name.length<2||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||password.length<10)return json({error:'Name, valid email and a password of at least 10 characters are required.'},400);
+      if([...users.values()].some(u=>u.email===email))return json({error:'An account with this email already exists.'},409);
+      const now=new Date().toISOString();
+      const passwordHash=await hashPassword(password);
+      const u:User={id:makeId(),name,email,role:'User',status:'pending',passwordHash,createdAt:now,updatedAt:now};
+      users.set(u.id,u);
+      return json({ok:true,status:'pending',message:'Registration received. Your account is pending approval.',user:publicUser(u)},201);
+    }catch{return json({error:'Registration service is temporarily unavailable. Please try again.'},503)}
+  }
   if(url.pathname==='/v1/auth/login'&&request.method==='POST'){const b:any=await request.json().catch(()=>({}));const email=clean(b.email,160).toLowerCase(),password=String(b.password||'');const u=[...users.values()].find(x=>x.email===email);if(!u||!(await verifyPassword(password,u.passwordHash)))return json({error:'Invalid email or password.'},401);if(u.status!=='accepted')return json({error:u.status==='pending'?'Your account is awaiting approval.':'This account is not active.'},403);const token=crypto.randomUUID()+crypto.randomUUID();sessions.set(token,{userId:u.id,expiresAt:Date.now()+SESSION_MS});return json({ok:true,token,expiresAt:Date.now()+SESSION_MS,user:publicUser(u)})}
   if(url.pathname==='/v1/auth/me'&&request.method==='GET'){const u=userFromRequest(request);return u?json({ok:true,user:publicUser(u)}):json({error:'Authentication required'},401)}
   if(url.pathname==='/v1/auth/logout'&&request.method==='POST'){sessions.delete(tokenFrom(request));return json({ok:true})}
