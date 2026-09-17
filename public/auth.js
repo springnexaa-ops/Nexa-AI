@@ -1,14 +1,40 @@
 const TOKEN_KEY="nexa.user.session";
 const $=id=>document.getElementById(id);
 const nextPath=(()=>{const n=new URLSearchParams(location.search).get("next");return n&&n.startsWith("/")&&!n.startsWith("//")&&!n.startsWith("/admin")?n:"/"})();
-function token(){return sessionStorage.getItem(TOKEN_KEY)||""}function saveToken(v){sessionStorage.setItem(TOKEN_KEY,v)}function clearToken(){sessionStorage.removeItem(TOKEN_KEY)}
-function setMessage(text,ok=false){const e=$("message");e.textContent=text||"";e.className="message "+(ok?"ok":"")}
+function token(){return sessionStorage.getItem(TOKEN_KEY)||""}
+function saveToken(v){sessionStorage.setItem(TOKEN_KEY,v)}
+function clearToken(){sessionStorage.removeItem(TOKEN_KEY)}
+function setMessage(text,ok=false){const e=$("message");if(!e)return;e.textContent=text||"";e.className="message "+(ok?"ok":"")}
 function escapeHtml(v){return String(v??"").replace(/[&<>\"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]))}
 async function api(path,options={}){const headers={"content-type":"application/json",...(options.headers||{})};if(token())headers.authorization=`Bearer ${token()}`;return fetch(path,{...options,headers,cache:"no-store"})}
-function show(mode){const login=mode==="login";$("loginPanel").classList.toggle("hidden",!login);$("registerPanel").classList.toggle("hidden",login);$("loginTab").classList.toggle("active",login);$("registerTab").classList.toggle("active",!login);setMessage("")}
+function show(mode){const login=mode==="login";$("loginPanel")?.classList.toggle("hidden",!login);$("registerPanel")?.classList.toggle("hidden",login);$("loginTab")?.classList.toggle("active",login);$("registerTab")?.classList.toggle("active",!login);setMessage("")}
 function score(p){let s=0;if(p.length>=10)s++;if(/[a-z]/.test(p)&&/[A-Z]/.test(p))s++;if(/\d/.test(p))s++;if(/[^A-Za-z0-9]/.test(p))s++;return s}
-if($("regPassword"))$("regPassword").addEventListener("input",e=>{$("strength").textContent=score(e.target.value)>=4?"Strong password.":score(e.target.value)>=2?"Moderate password — add uppercase/lowercase, numbers and symbols.":"Use 10+ characters with a mix of letters, numbers and symbols."})
-async function register(e){e.preventDefault();const name=$("regName").value.trim(),email=$("regEmail").value.trim(),password=$("regPassword").value,role=$("regRole").value;if(password.length<10){setMessage("Password must contain at least 10 characters.");return}if(!$("regConsent").checked){setMessage("Please accept the Nexa AI Privacy, Safety & Acceptable Use Policy.");return}setMessage("Submitting registration…");try{const r=await api("/v1/auth/register",{method:"POST",body:JSON.stringify({name,email,password,role})}),d=await r.json();if(!r.ok){setMessage(d.error||"Registration failed.");return}$("registerForm").reset();$("strength").textContent="Use 10+ characters with a mix of letters, numbers and symbols.";setMessage("Registration submitted. Your account is pending administrator approval.",true);setTimeout(()=>show("login"),1200)}catch{setMessage("Unable to reach Nexa AI.")}}
-async function login(e){e.preventDefault();setMessage("Signing in…");try{const r=await api("/v1/auth/login",{method:"POST",body:JSON.stringify({email:$("loginEmail").value.trim(),password:$("loginPassword").value})}),d=await r.json();if(!r.ok){setMessage(d.error||"Sign in failed.");return}saveToken(d.token);location.replace(nextPath)}catch{setMessage("Unable to reach Nexa AI.")}}
+const passwordField=$("regPassword");
+if(passwordField)passwordField.addEventListener("input",e=>{const s=score(e.target.value);$("strength").textContent=s>=4?"Strong password.":s>=2?"Moderate password — add uppercase/lowercase, numbers and symbols.":"Use 10+ characters with a mix of letters, numbers and symbols."});
+async function register(e){
+ e.preventDefault();
+ const form=$("registerForm"),button=form?.querySelector('button[type="submit"]');
+ const name=$("regName")?.value.trim()||"",email=$("regEmail")?.value.trim().toLowerCase()||"",password=$("regPassword")?.value||"";
+ if(!name){setMessage("Please enter your full name.");return}
+ if(!email||!email.includes("@")){setMessage("Please enter a valid email address.");return}
+ if(password.length<10){setMessage("Password must contain at least 10 characters.");return}
+ if(!$("regConsent")?.checked){setMessage("Please accept the Nexa AI Privacy, Safety & Acceptable Use Policy.");return}
+ if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent="Creating account…"}
+ setMessage("Submitting registration…");
+ try{
+  const r=await api("/v1/auth/register",{method:"POST",body:JSON.stringify({name,email,password,role:"User"})});
+  let d={};try{d=await r.json()}catch{}
+  if(!r.ok){setMessage(d.error||`Registration failed (${r.status}).`);return}
+  form.reset();if($("strength"))$("strength").textContent="Use 10+ characters with a mix of letters, numbers and symbols.";
+  setMessage("Registration successful. Your account is pending administrator approval.",true);
+  setTimeout(()=>show("login"),1500);
+ }catch(err){setMessage("Unable to reach Nexa AI. Please check your connection and try again.");}
+ finally{if(button){button.disabled=false;button.textContent=button.dataset.originalText||"Create Public Account"}}
+}
+async function login(e){e.preventDefault();setMessage("Signing in…");try{const r=await api("/v1/auth/login",{method:"POST",body:JSON.stringify({email:$("loginEmail")?.value.trim().toLowerCase()||"",password:$("loginPassword")?.value||""})});let d={};try{d=await r.json()}catch{}if(!r.ok){setMessage(d.error||`Sign in failed (${r.status}).`);return}saveToken(d.token);location.replace(nextPath)}catch{setMessage("Unable to reach Nexa AI.")}}
 async function boot(){if(!token())return;try{const r=await api("/v1/auth/me");if(r.ok){const d=await r.json();$("accountState").innerHTML=`<div class="signed"><strong>${escapeHtml(d.user.name)}</strong><span>${escapeHtml(d.user.email)}</span><button id="logout" class="ghost">Sign out</button></div>`;$("logout").onclick=async()=>{try{await api("/v1/auth/logout",{method:"POST"})}finally{clearToken();location.reload()}}}else clearToken()}catch{}}
-$("loginTab").onclick=()=>show("login");$("registerTab").onclick=()=>show("register");$("loginForm").onsubmit=login;$("registerForm").onsubmit=register;boot();
+$("loginTab")?.addEventListener("click",()=>show("login"));
+$("registerTab")?.addEventListener("click",()=>show("register"));
+$("loginForm")?.addEventListener("submit",login);
+$("registerForm")?.addEventListener("submit",register);
+boot();
