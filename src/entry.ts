@@ -1,10 +1,13 @@
 import worker from "./index-v3";
+import { UserStoreDO } from "./user-store";
 import { analyzeUploadedEeg } from "./eeg-analysis";
 import { bedrockChat, bedrockConfigured, bedrockModel, bedrockRegion } from "./bedrock";
 import { cachedGet, isCacheableGet } from "./cache";
 import { weatherResponse } from "./weather";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+
+export { UserStoreDO };
 
 function bearer(request: Request): string {
   const value = request.headers.get("authorization") || "";
@@ -52,17 +55,11 @@ async function handleBedrock(request: Request, env: any): Promise<Response> {
   const body: any = await request.json().catch(() => ({}));
   const messages = getMessages(body);
   if (!messages.some(m => m.role === "user")) return cors(json({ error: "messages with a user message are required" }, 400));
-
   const result = await bedrockChat(env, messages);
   return cors(json({
-    id: crypto.randomUUID(),
-    object: "chat.completion",
-    created: Math.floor(Date.now() / 1000),
-    brand: "Nexa AI",
-    poweredBy: "SPRINGNEXA PRIVATE LIMITED (IT Division)",
-    company: "SpringNexa Private Limited",
-    provider: result.provider,
-    model: result.model,
+    id: crypto.randomUUID(), object: "chat.completion", created: Math.floor(Date.now() / 1000), brand: "Nexa AI",
+    poweredBy: "SPRINGNEXA PRIVATE LIMITED (IT Division)", company: "SpringNexa Private Limited",
+    provider: result.provider, model: result.model,
     choices: [{ index: 0, message: { role: "assistant", content: result.content }, finish_reason: "stop" }],
   }));
 }
@@ -71,29 +68,16 @@ export default {
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     const requestUrl = new URL(request.url);
     const path = requestUrl.pathname;
-
     if (requestUrl.protocol === "http:") {
       requestUrl.protocol = "https:";
       return new Response(null, { status: 301, headers: { location: requestUrl.toString(), "cache-control": "public, max-age=3600" } });
     }
-
     const protectedAdmin = path.startsWith("/v1/admin/") && !["/v1/admin/login", "/v1/admin/logout"].includes(path);
     if (protectedAdmin && (!env.ADMIN_TOKEN || bearer(request) !== env.ADMIN_TOKEN)) return unauthorized();
-
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
-
-    if (path === "/v1/security/report" && request.method === "POST") {
-      return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
-    }
-
-    if (path === "/v1/weather" && request.method === "GET") {
-      return cors(await weatherResponse(request));
-    }
-
-    if (isCacheableGet(request)) {
-      return cachedGet(request, ctx, () => worker.fetch(request, env, ctx));
-    }
-
+    if (path === "/v1/security/report" && request.method === "POST") return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
+    if (path === "/v1/weather" && request.method === "GET") return cors(await weatherResponse(request));
+    if (isCacheableGet(request)) return cachedGet(request, ctx, () => worker.fetch(request, env, ctx));
     if (path === "/v1/chat/completions" && request.method === "POST") {
       const body: any = await request.clone().json().catch(() => ({}));
       const provider = typeof body?.provider === "string" ? body.provider.toLowerCase() : typeof body?.mode === "string" ? body.mode.toLowerCase() : "";
@@ -106,27 +90,13 @@ export default {
         }
       }
     }
-
-    if (path === "/v1/bedrock/status" && request.method === "GET") {
-      return cors(json({
-        provider: "bedrock",
-        configured: bedrockConfigured(env),
-        region: bedrockRegion(env),
-        model: bedrockModel(env),
-        authentication: "AWS_BEARER_TOKEN_BEDROCK",
-      }, 200, { "cache-control": "public, max-age=60, s-maxage=300", "x-nexa-cache": "MISS" }));
-    }
-
+    if (path === "/v1/bedrock/status" && request.method === "GET") return cors(json({ provider: "bedrock", configured: bedrockConfigured(env), region: bedrockRegion(env), model: bedrockModel(env), authentication: "AWS_BEARER_TOKEN_BEDROCK" }, 200, { "cache-control": "public, max-age=60, s-maxage=300", "x-nexa-cache": "MISS" }));
     if (path === "/v1/files/analyze-eeg" && request.method === "POST") {
-      const authRequest = new Request(new URL("/v1/auth/me", request.url), {
-        method: "GET",
-        headers: { authorization: request.headers.get("authorization") || "" },
-      });
+      const authRequest = new Request(new URL("/v1/auth/me", request.url), { method: "GET", headers: { authorization: request.headers.get("authorization") || "" } });
       const auth = await worker.fetch(authRequest, env, ctx);
       if (!auth.ok) return auth;
       return analyzeUploadedEeg(request, env);
     }
-
     const response = await worker.fetch(request, env, ctx);
     if ((path === "/v1/admin/logout" || path === "/v1/auth/logout") && request.method === "POST") return withClearSiteData(response);
     return response;
