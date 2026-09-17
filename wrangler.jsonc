@@ -15,11 +15,6 @@
     { "tag": "v1", "new_sqlite_classes": ["UserStoreDO"] },
     { "tag": "v2", "new_sqlite_classes": ["MedicalEvidenceDO"] }
   ],
-  "exports": {
-    "UserStoreDO": { "type": "durable-object", "storage": "sqlite" },
-    "MedicalEvidenceDO": { "type": "durable-object", "storage": "sqlite" }
-  },
-  "triggers": { "crons": ["0 */6 * * *"] },
   "vars": {
     "AWS_REGION": "us-east-1",
     "BEDROCK_MODEL_ID": "us.anthropic.claude-sonnet-4-6"
