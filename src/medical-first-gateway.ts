@@ -5,6 +5,8 @@ import { queryLiveEvidence } from "./medical-live-evidence";
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
 
+const MEDICAL_INFERENCE_MODEL = "@cf/google/gemma-4-26b-a4b-it";
+
 function looksLikeMedical(text: string): boolean {
   const q = text.toLowerCase();
   return isMedicalQuery(text) || /\b(ncs|ncvs|nerve conduction|emg|edx|electromyograph|rns|repetitive nerve stimulation|eeg|v[ .-]?ep|bera|baer|neuromuscular|neuropathy|radiculopathy|myopathy|seizure)\b/i.test(q);
@@ -24,6 +26,7 @@ function sanitizeMedicalResponse(response: Response, evidenceCount: number): Res
   const headers = new Headers(response.headers);
   headers.set("x-nexa-medical-retrieval", "primary");
   headers.set("x-nexa-medical-evidence-count", String(evidenceCount));
+  headers.set("x-nexa-medical-inference", MEDICAL_INFERENCE_MODEL);
   if (response.status < 500) return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   return new Response(JSON.stringify({
     error: "Nexa Medical is temporarily unavailable",
@@ -56,7 +59,24 @@ export default {
       { role: "system", content: `${priorSystem ? priorSystem + "\n\n" : ""}${system}` },
       ...messages.filter(m => m.role !== "system")
     ];
-    const nextBody = { ...body, mode: "medical", provider: "medical", messages: rebuilt };
+
+    // Keep NEXA's internal medical retrieval as the source-of-truth layer, while
+    // using a known current Workers AI model for synthesis. The previous
+    // provider="medical" path entered a failing medical adapter and then added
+    // the misleading medical:not_supported error.
+    const nextBody = {
+      ...body,
+      mode: "medical",
+      provider: "cloudflare",
+      model: MEDICAL_INFERENCE_MODEL,
+      messages: rebuilt,
+      metadata: {
+        ...(body?.metadata || {}),
+        nexaMedicalRetrieval: "primary",
+        nexaMedicalEvidenceCount: hits.length,
+        nexaMedicalInference: MEDICAL_INFERENCE_MODEL
+      }
+    };
     const nextRequest = new Request(request, { body: JSON.stringify(nextBody) });
     const response = await worker.fetch(nextRequest, env, ctx);
     return sanitizeMedicalResponse(response, hits.length);
