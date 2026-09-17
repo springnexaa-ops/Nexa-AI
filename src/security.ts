@@ -16,10 +16,9 @@ export function rateLimit(key:string,limit=60,windowMs=60000):boolean { const no
 export function constantTimeEqual(a:string,b:string):boolean { if(a.length!==b.length)return false;let diff=0;for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);return diff===0; }
 export function cookieToken(request:Request):string|null {
   const cookies=request.headers.get("cookie")||"";
-  const match=(name:string)=>{const m=cookies.match(new RegExp(`(?:^|;\\s*)${name.replace(/[.*+?^${}()|[\\]\\]/g,"\\\\$&")}=([^;]+)`));return m?decodeURIComponent(m[1]):null;};
-  // Accept the legacy cookie during migration; newly issued cookies use the stronger __Host- prefix.
-  return match("__Host-nexa_admin") || match("nexa_admin");
+  const m=cookies.match(/(?:^|;\s*)__Host-nexa_admin=([^;]+)/);
+  return m?decodeURIComponent(m[1]):null;
 }
 export function isAdminRequest(request:Request,adminToken?:string):boolean { if(!adminToken)return false;const auth=request.headers.get("authorization")||"";const bearer=auth.startsWith("Bearer ")?auth.slice(7):"";return constantTimeEqual(bearer||cookieToken(request)||"",adminToken); }
 export function adminCookie(token:string):string { return `__Host-nexa_admin=${encodeURIComponent(token)}; Max-Age=28800; Path=/; HttpOnly; Secure; SameSite=Strict`; }
-export const clearAdminCookie="__Host-nexa_admin=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict, nexa_admin=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict";
+export const clearAdminCookie="__Host-nexa_admin=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict";
