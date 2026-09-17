@@ -1,6 +1,7 @@
 import worker from "./index-v3";
 import { analyzeUploadedEeg } from "./eeg-analysis";
 import { bedrockChat, bedrockConfigured, bedrockModel, bedrockRegion } from "./bedrock";
+import { cachedGet, isCacheableGet } from "./cache";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -16,10 +17,10 @@ function unauthorized(): Response {
   });
 }
 
-function json(data: unknown, status = 200): Response {
+function json(data: unknown, status = 200, extra?: HeadersInit): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...extra },
   });
 }
 
@@ -66,6 +67,11 @@ export default {
 
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
 
+    // Cache only non-personalized, read-only metadata endpoints. Authenticated/cookie-bearing requests bypass this layer.
+    if (isCacheableGet(request) && path !== "/v1/bedrock/status") {
+      return cachedGet(request, ctx, () => worker.fetch(request, env, ctx));
+    }
+
     // AWS Bedrock is an additive provider. Existing Nexa providers remain unchanged.
     if (path === "/v1/chat/completions" && request.method === "POST") {
       const body: any = await request.clone().json().catch(() => ({}));
@@ -87,7 +93,7 @@ export default {
         region: bedrockRegion(env),
         model: bedrockModel(env),
         authentication: "AWS_BEARER_TOKEN_BEDROCK",
-      }));
+      }, 200, { "cache-control": "public, max-age=60, s-maxage=300", "x-nexa-cache": "MISS" }));
     }
 
     if (path === "/v1/files/analyze-eeg" && request.method === "POST") {
