@@ -1,0 +1,90 @@
+// NEXA Medical Evidence Registry
+// Purpose: identify authoritative/open resources, their permitted use class, and
+// the evidence domains they can support. This registry is NOT a licence grant.
+// Source content must only be ingested when its own licence/terms permit it.
+
+export type MedicalSource = {
+  id: string;
+  name: string;
+  authority: string;
+  domains: string[];
+  type: "guideline" | "reference" | "dataset" | "terminology" | "regulatory" | "clinical-trials" | "education";
+  access: "open" | "public" | "registration" | "credentialed" | "license-required";
+  ingestion: "allowed-with-attribution" | "public-data-only" | "metadata-and-link" | "do-not-ingest-without-license";
+  url: string;
+  notes: string;
+};
+
+export const NEXA_MEDICAL_SOURCES: MedicalSource[] = [
+  // India / statutory and policy sources
+  { id:"ICMR_AI", name:"ICMR Ethical Guidelines for Application of AI in Biomedical Research and Healthcare", authority:"Indian Council of Medical Research, Government of India", domains:["medical-ai","ethics","research","consent","governance"], type:"regulatory", access:"public", ingestion:"metadata-and-link", url:"https://www.icmr.gov.in/ethical-guidelines-for-application-of-artificial-intelligence-in-biomedical-research-and-healthcare", notes:"Use as a governance and ethics source; does not itself confer product approval." },
+  { id:"CDSCO_MDR", name:"Medical Devices Rules and CDSCO medical-device guidance", authority:"CDSCO, Ministry of Health and Family Welfare, Government of India", domains:["medical-device","SaMD","software","risk-classification","quality","safety"], type:"regulatory", access:"public", ingestion:"metadata-and-link", url:"https://www.cdsco.gov.in/opencms/opencms/en/Medical-Device-Diagnostics/Medical-Device-Diagnostics/", notes:"Regulatory source for intended-use and medical-device obligations; current CDSCO guidance must be checked for the exact product claim." },
+  { id:"NMC_TELEMED", name:"Telemedicine Practice Guidelines / RMP conduct requirements", authority:"National Medical Commission, India", domains:["telemedicine","RMP","consent","clinical-practice"], type:"regulatory", access:"public", ingestion:"metadata-and-link", url:"https://www.nmc.org.in/", notes:"Relevant when NEXA supports an RMP-led telemedicine workflow." },
+  { id:"ABDM", name:"Ayushman Bharat Digital Mission", authority:"National Health Authority, Government of India", domains:["ABHA","HPR","HFR","PHR","FHIR","interoperability","consent"], type:"regulatory", access:"public", ingestion:"metadata-and-link", url:"https://abdm.gov.in/", notes:"Use for Indian digital-health interoperability and consent architecture." },
+  { id:"DPDP", name:"Digital Personal Data Protection Act / Rules", authority:"Ministry of Electronics and Information Technology, Government of India", domains:["privacy","personal-data","consent","security","governance"], type:"regulatory", access:"public", ingestion:"metadata-and-link", url:"https://www.meity.gov.in/documents/act-and-policies/digital-personal-data-protection-rules-2025-gDOxUjMtQWa", notes:"Current privacy obligations must be assessed with counsel and the notified implementation timeline." },
+
+  // Global public-health and clinical authorities
+  { id:"WHO", name:"World Health Organization", authority:"WHO", domains:["public-health","clinical-guidance","AI-governance","patient-safety"], type:"guideline", access:"public", ingestion:"allowed-with-attribution", url:"https://www.who.int/", notes:"Use current WHO publications where reuse terms permit; preserve citation and licence metadata." },
+  { id:"WHO_AI_LMM", name:"WHO Guidance on Large Multi-Modal Models for Health", authority:"WHO", domains:["medical-ai","multimodal","safety","governance"], type:"guideline", access:"public", ingestion:"metadata-and-link", url:"https://www.who.int/publications/i/item/9789240084759", notes:"Use as a safety/governance reference for multimodal medical AI." },
+  { id:"CDC", name:"Centers for Disease Control and Prevention", authority:"U.S. CDC", domains:["public-health","infectious-disease","prevention","surveillance"], type:"guideline", access:"public", ingestion:"public-data-only", url:"https://www.cdc.gov/", notes:"Prefer public-domain U.S. government material; preserve source date." },
+  { id:"FDA", name:"U.S. FDA", authority:"U.S. Food and Drug Administration", domains:["drugs","devices","SaMD","safety","warnings"], type:"regulatory", access:"public", ingestion:"public-data-only", url:"https://www.fda.gov/", notes:"Regulatory/reference information; not an Indian approval pathway." },
+
+  // NIH / NLM reference ecosystem
+  { id:"NLM_MEDLINEPLUS", name:"MedlinePlus", authority:"U.S. National Library of Medicine / NIH", domains:["patient-education","conditions","tests","drugs","genetics"], type:"education", access:"public", ingestion:"allowed-with-attribution", url:"https://medlineplus.gov/", notes:"High-value patient-facing reference; follow NLM copyright/reuse notices for each asset." },
+  { id:"NLM_PMC", name:"PubMed Central Open Access", authority:"National Library of Medicine / NIH", domains:["biomedical-literature","clinical-research","systematic-review"], type:"reference", access:"open", ingestion:"allowed-with-attribution", url:"https://pmc.ncbi.nlm.nih.gov/", notes:"Only ingest articles marked as Open Access with compatible licence metadata; licence varies by article." },
+  { id:"NLM_BOOKS", name:"NCBI Bookshelf", authority:"National Library of Medicine / NIH", domains:["medical-reference","clinical-review","education"], type:"reference", access:"open", ingestion:"do-not-ingest-without-license", url:"https://www.ncbi.nlm.nih.gov/books/", notes:"Access is open but copyright/licence varies; do not bulk-copy book text unless the specific work permits it." },
+  { id:"CLINVAR", name:"ClinVar", authority:"NCBI", domains:["genomics","variant-interpretation","genetic-disease"], type:"dataset", access:"open", ingestion:"allowed-with-attribution", url:"https://www.ncbi.nlm.nih.gov/clinvar/", notes:"Use structured variant assertions with provenance." },
+  { id:"GENBANK", name:"GenBank", authority:"NCBI/INSDC", domains:["genomics","sequence","bioinformatics"], type:"dataset", access:"open", ingestion:"public-data-only", url:"https://www.ncbi.nlm.nih.gov/genbank/", notes:"Sequence data may carry submitter/source-specific terms; retain accession and provenance." },
+  { id:"MEDGEN", name:"MedGen", authority:"NCBI", domains:["clinical-terminology","genetic-disease","phenotype"], type:"terminology", access:"open", ingestion:"allowed-with-attribution", url:"https://www.ncbi.nlm.nih.gov/medgen/", notes:"Use identifiers and definitions with provenance." },
+
+  // Clinical research / trials
+  { id:"CLINICALTRIALS", name:"ClinicalTrials.gov", authority:"U.S. National Library of Medicine / NIH", domains:["clinical-trials","interventional-studies","observational-studies"], type:"clinical-trials", access:"open", ingestion:"metadata-and-link", url:"https://clinicaltrials.gov/", notes:"Use study metadata, registration records and results with study-status/date provenance." },
+  { id:"WHO_ICTRP", name:"WHO International Clinical Trials Registry Platform", authority:"WHO", domains:["clinical-trials","trial-registration"], type:"clinical-trials", access:"open", ingestion:"metadata-and-link", url:"https://trialsearch.who.int/", notes:"Use registry metadata and source links." },
+
+  // Open biomedical / physiology datasets
+  { id:"PHYSIONET", name:"PhysioNet", authority:"PhysioNet / NIH ecosystem", domains:["ECG","EEG","EMG","ICU","physiology","signal-processing"], type:"dataset", access:"open", ingestion:"public-data-only", url:"https://physionet.org/", notes:"Dataset-specific licences and credentialing vary; retain dataset citation and licence." },
+  { id:"MIMIC", name:"MIMIC-IV", authority:"MIT Laboratory for Computational Physiology / PhysioNet", domains:["ICU","EHR","vitals","laboratory","clinical-research"], type:"dataset", access:"credentialed", ingestion:"license-required", url:"https://physionet.org/content/mimiciv/", notes:"Credentialed/restricted resource; do not redistribute raw patient data." },
+  { id:"NIH_CXR", name:"NIH Chest X-ray datasets", authority:"NIH Clinical Center", domains:["radiology","chest-xray","computer-vision"], type:"dataset", access:"open", ingestion:"public-data-only", url:"https://nihcc.app.box.com/v/ChestXray-NIHCC", notes:"Use only under the dataset's stated terms and retain dataset provenance." },
+  { id:"TCIA", name:"The Cancer Imaging Archive", authority:"U.S. National Cancer Institute", domains:["radiology","oncology","medical-imaging"], type:"dataset", access:"open", ingestion:"public-data-only", url:"https://www.cancerimagingarchive.net/", notes:"Collection-specific terms and DICOM metadata must be preserved." },
+
+  // Clinical terminology / interoperability
+  { id:"ICD11", name:"ICD-11", authority:"WHO", domains:["diagnosis-coding","classification","health-statistics"], type:"terminology", access:"open", ingestion:"allowed-with-attribution", url:"https://icd.who.int/", notes:"Use current WHO release and retain version identifiers." },
+  { id:"LOINC", name:"LOINC", authority:"Regenstrief Institute", domains:["laboratory","observations","clinical-measurements","interoperability"], type:"terminology", access:"open", ingestion:"allowed-with-attribution", url:"https://loinc.org/", notes:"Use official release and licence/attribution requirements." },
+  { id:"RXNORM", name:"RxNorm", authority:"U.S. National Library of Medicine", domains:["medications","drug-normalization","interoperability"], type:"terminology", access:"open", ingestion:"allowed-with-attribution", url:"https://www.nlm.nih.gov/research/umls/rxnorm/", notes:"Use current release and source provenance." },
+  { id:"SNOMED", name:"SNOMED CT", authority:"SNOMED International", domains:["clinical-terminology","problem-list","clinical-data"], type:"terminology", access:"license-required", ingestion:"do-not-ingest-without-license", url:"https://www.snomed.org/", notes:"Do not treat public availability of some browsers/services as a blanket redistribution licence." },
+  { id:"FHIR", name:"HL7 FHIR", authority:"HL7 International", domains:["interoperability","EHR","health-records","APIs"], type:"terminology", access:"open", ingestion:"allowed-with-attribution", url:"https://www.hl7.org/fhir/", notes:"Use the current FHIR release and implementation-guide constraints." },
+
+  // Major specialty guideline ecosystems
+  { id:"AAN", name:"American Academy of Neurology", authority:"AAN", domains:["neurology","clinical-guidelines","evidence"], type:"guideline", access:"public", ingestion:"metadata-and-link", url:"https://www.aan.com/Guidelines", notes:"Use guideline metadata/links unless the specific document licence permits reproduction." },
+  { id:"AANEM", name:"American Association of Neuromuscular & Electrodiagnostic Medicine", authority:"AANEM", domains:["NCS","EMG","EDX","neuromuscular"], type:"guideline", access:"public", ingestion:"metadata-and-link", url:"https://www.aanem.org/", notes:"Use current public study/guideline resources with attribution and terms compliance." },
+  { id:"IFCN", name:"International Federation of Clinical Neurophysiology", authority:"IFCN", domains:["EEG","EMG","NCS","evoked-potentials","clinical-neurophysiology"], type:"guideline", access:"public", ingestion:"metadata-and-link", url:"https://www.ifcn.info/", notes:"Guideline-specific reuse terms apply." },
+  { id:"ILAE", name:"International League Against Epilepsy", authority:"ILAE", domains:["epilepsy","EEG","seizure","classification"], type:"guideline", access:"public", ingestion:"metadata-and-link", url:"https://www.ilae.org/", notes:"Use current guideline/version metadata and links unless reuse is expressly permitted." },
+  { id:"ESMO", name:"European Society for Medical Oncology", authority:"ESMO", domains:["oncology","cancer-guidelines"], type:"guideline", access:"public", ingestion:"metadata-and-link", url:"https://www.esmo.org/guidelines", notes:"Guideline reuse depends on document terms." },
+  { id:"NICE", name:"National Institute for Health and Care Excellence", authority:"NICE", domains:["clinical-guidelines","health-technology","evidence"], type:"guideline", access:"public", ingestion:"metadata-and-link", url:"https://www.nice.org.uk/guidance", notes:"Use current guideline pages and follow NICE reuse terms." },
+  { id:"USPSTF", name:"U.S. Preventive Services Task Force", authority:"USPSTF", domains:["screening","prevention","evidence"], type:"guideline", access:"public", ingestion:"metadata-and-link", url:"https://www.uspreventiveservicestaskforce.org/", notes:"Recommendation statements should retain publication date and population." }
+];
+
+export function getMedicalSourceContext(query: string): string {
+  const q = String(query || "").toLowerCase();
+  const matches = NEXA_MEDICAL_SOURCES.filter(s => s.domains.some(d => q.includes(d.toLowerCase()))).slice(0, 10);
+  const fallback = ["ICMR_AI", "CDSCO_MDR", "ABDM", "NLM_PMC", "NLM_MEDLINEPLUS", "WHO", "FHIR"]
+    .map(id => NEXA_MEDICAL_SOURCES.find(s => s.id === id)!)
+    .filter(Boolean);
+  const selected = matches.length ? matches : fallback;
+  return [
+    "NEXA EVIDENCE SOURCE POLICY: Prefer current authoritative sources, preserve publication/version date and provenance, and never present an unverified web page as clinical fact.",
+    "Open/public availability does NOT mean unrestricted copyright or clinical-use rights. Ingest only data whose source terms permit the intended use; otherwise retain metadata, citation and a link for retrieval.",
+    "Selected source families:",
+    ...selected.map(s => `- ${s.name} [${s.id}] | ${s.authority} | ${s.type} | access=${s.access} | ingestion=${s.ingestion} | ${s.url}`),
+    "For patient-specific decisions, distinguish source evidence from model-generated reasoning and require appropriately qualified clinician review."
+  ].join("\n");
+}
+
+export const NEXA_REGULATORY_PRINCIPLES = [
+  "Evidence provenance is mandatory: source, version/date, licence/terms and retrieval date.",
+  "Medical claims must be traceable to an authoritative source or explicitly labelled as model reasoning.",
+  "Patient data must be handled under applicable Indian privacy, security, consent and retention requirements.",
+  "Clinical AI intended to diagnose, monitor, predict or otherwise perform a medical-device function requires an intended-use and risk classification assessment under the applicable Indian medical-device framework.",
+  "A knowledge corpus, safety prompt or disclaimer does not itself constitute CDSCO/NMC/ICMR approval, registration, licence, certification or clinical validation.",
+  "Before any statutory submission, perform clinical validation, software lifecycle/QMS documentation, cybersecurity/risk management, human-factors evaluation and regulatory classification with qualified regulatory professionals."
+] as const;
