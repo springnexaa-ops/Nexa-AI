@@ -2,6 +2,7 @@ import worker from "./index-v3";
 import { analyzeUploadedEeg } from "./eeg-analysis";
 import { bedrockChat, bedrockConfigured, bedrockModel, bedrockRegion } from "./bedrock";
 import { cachedGet, isCacheableGet } from "./cache";
+import { weatherResponse } from "./weather";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -71,7 +72,6 @@ export default {
     const requestUrl = new URL(request.url);
     const path = requestUrl.pathname;
 
-    // Enforce HTTPS at the Worker as a second layer behind Cloudflare SSL/TLS settings.
     if (requestUrl.protocol === "http:") {
       requestUrl.protocol = "https:";
       return new Response(null, { status: 301, headers: { location: requestUrl.toString(), "cache-control": "public, max-age=3600" } });
@@ -82,17 +82,18 @@ export default {
 
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
 
-    // CSP Reporting API endpoint. Reports contain browser diagnostics only; do not persist them here.
     if (path === "/v1/security/report" && request.method === "POST") {
       return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
     }
 
-    // Cache only non-personalized, read-only metadata endpoints. Authenticated/cookie-bearing requests bypass this layer.
+    if (path === "/v1/weather" && request.method === "GET") {
+      return cors(await weatherResponse(request));
+    }
+
     if (isCacheableGet(request)) {
       return cachedGet(request, ctx, () => worker.fetch(request, env, ctx));
     }
 
-    // AWS Bedrock is an additive provider. Existing Nexa providers remain unchanged.
     if (path === "/v1/chat/completions" && request.method === "POST") {
       const body: any = await request.clone().json().catch(() => ({}));
       const provider = typeof body?.provider === "string" ? body.provider.toLowerCase() : typeof body?.mode === "string" ? body.mode.toLowerCase() : "";
