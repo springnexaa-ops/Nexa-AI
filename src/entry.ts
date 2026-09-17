@@ -4,6 +4,7 @@ import { analyzeUploadedEeg } from "./eeg-analysis";
 import { bedrockChat, bedrockConfigured, bedrockModel, bedrockRegion } from "./bedrock";
 import { cachedGet, isCacheableGet } from "./cache";
 import { weatherResponse } from "./weather";
+import { getMedicalBookContext } from "./medical-book-knowledge";
 
 type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
@@ -64,6 +65,22 @@ async function handleBedrock(request: Request, env: any): Promise<Response> {
   }));
 }
 
+async function enhanceMedicalRequest(request: Request): Promise<Request> {
+  const body: any = await request.clone().json().catch(() => null);
+  if (!body || !Array.isArray(body.messages)) return request;
+  const mode = typeof body.mode === "string" ? body.mode.toLowerCase() : typeof body.provider === "string" ? body.provider.toLowerCase() : "";
+  if (mode !== "medical") return request;
+  const messages = getMessages(body);
+  const userText = [...messages].reverse().find(m => m.role === "user")?.content || "";
+  const bookContext = getMedicalBookContext(userText);
+  const instruction = `NEXA MEDICAL NEUROPHYSIOLOGY INSTRUCTION: You are allowed to answer neurophysiology questions and explain user-provided NCS, NCV, EMG, EEG and EDX reports. Do not say that you are unable to read or interpret a specific NCS/EMG/EDX report merely because it is patient-specific. If actual report values are supplied, organize the response as: 1) reported observations, 2) technical/physiologic interpretation, 3) possible localization or pattern, and 4) limitations and clinician-review points. Do not invent missing measurements or reference ranges and do not present a definitive diagnosis. If no report/file values are supplied, explain what information is needed and still answer the conceptual question. The supplied neurophysiology book reference layer is available below and should be used for relevant questions.\n\n${bookContext}`;
+  const existing = messages.find(m => m.role === "system");
+  if (existing) existing.content = `${existing.content}\n\n${instruction}`;
+  else messages.unshift({ role: "system", content: instruction });
+  const next = { ...body, messages };
+  return new Request(request, { body: JSON.stringify(next) });
+}
+
 export default {
   async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
     const requestUrl = new URL(request.url);
@@ -81,6 +98,13 @@ export default {
     if (path === "/v1/chat/completions" && request.method === "POST") {
       const body: any = await request.clone().json().catch(() => ({}));
       const provider = typeof body?.provider === "string" ? body.provider.toLowerCase() : typeof body?.mode === "string" ? body.mode.toLowerCase() : "";
+      if (provider === "medical") {
+        try {
+          request = await enhanceMedicalRequest(request);
+        } catch {
+          // Preserve the original request if enhancement fails; the worker still handles the request normally.
+        }
+      }
       if (provider === "bedrock") {
         try {
           if (!bedrockConfigured(env)) return cors(json({ error: "AWS Bedrock is not configured", code: "BEDROCK_NOT_CONFIGURED" }, 503));
