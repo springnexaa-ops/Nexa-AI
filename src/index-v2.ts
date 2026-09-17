@@ -2,6 +2,7 @@ import { textToSpeech, speechToText, voiceSpeaker, voiceEncoding, voiceContentTy
 import { withSecurityHeaders, clientIp, rateLimit, isAdminRequest, adminCookie, clearAdminCookie } from "./security";
 import { isMedicalQuery, detectMedicalSpecialties, recommendMedicalProviders } from "./medical-directory";
 import { getMedicalBookContext, MEDICAL_BOOK_KNOWLEDGE_VERSION } from "./medical-book-knowledge";
+import { bedrockChat, bedrockConfigured, bedrockModel } from "./bedrock";
 
 export interface Env {
   AI: Ai;
@@ -9,6 +10,7 @@ export interface Env {
   GROQ_API_KEY?: string; GOOGLE_API_KEY?: string; NVIDIA_API_KEY?: string; HF_TOKEN?: string;
   ELEVENLABS_API_KEY?: string; ELEVENLABS_VOICE_ID?: string; ELEVENLABS_MODEL?: string;
   GROQ_MODEL?: string; GOOGLE_MODEL?: string; NVIDIA_MODEL?: string; MEDICAL_MODEL?: string;
+  AWS_BEARER_TOKEN_BEDROCK?: string; AWS_REGION?: string; BEDROCK_MODEL_ID?: string;
   ADMIN_TOKEN?: string;
   NEXA_ANALYTICS?: { writeDataPoint: (data: any) => void };
 }
@@ -83,7 +85,7 @@ async function answer(env: Env, msgs: Message[], provider = "auto", requestedMod
     try { return await medical(env, msgs, requestedModel || env.MEDICAL_MODEL || MEDICAL_DEFAULT); }
     catch (e) { errors.push(e instanceof Error ? e.message : "medical:error"); }
   }
-  const order = selected === "auto" ? ["cloudflare", "groq", "google", "nvidia"] : [selected];
+  const order = selected === "auto" ? ["cloudflare", "groq", "google", "nvidia", "bedrock"] : [selected];
   for (const p of order) {
     try {
       if (p === "cloudflare") {
@@ -97,7 +99,9 @@ async function answer(env: Env, msgs: Message[], provider = "auto", requestedMod
         try { return await google(env, msgs, model); } catch (e) { errors.push(e instanceof Error ? e.message : "google:error"); }
       } else if (p === "nvidia" && env.NVIDIA_API_KEY) {
         try { return await openAI(env.NVIDIA_API_KEY, "https://integrate.api.nvidia.com/v1/chat/completions", env.NVIDIA_MODEL || "nvidia/nemotron-3.5-lightning-30b-a3b", msgs, "nvidia"); } catch (e) { errors.push(e instanceof Error ? e.message : "nvidia:error"); }
-      } else if (p !== "cloudflare" && p !== "groq" && p !== "google" && p !== "nvidia") errors.push(`${p}:not_supported`);
+      } else if (p === "bedrock" && bedrockConfigured(env)) {
+        try { return await bedrockChat(env, msgs); } catch (e) { errors.push(e instanceof Error ? e.message : "bedrock:error"); }
+      } else if (p !== "cloudflare" && p !== "groq" && p !== "google" && p !== "nvidia" && p !== "bedrock") errors.push(`${p}:not_supported`);
     } catch (e) { errors.push(e instanceof Error ? e.message : `${p}:error`); }
   }
   throw new Error(errors.join(",") || "no_provider_available");
@@ -128,7 +132,7 @@ export default { async fetch(request: Request, env: Env): Promise<Response> {
   if (api && !rateLimit(`${ip}:${url.pathname}`, url.pathname.startsWith("/v1/audio/") ? 20 : 90)) return cors(json({ error: "Too many requests" }, 429));
   let response: Response;
   try {
-    if (url.pathname === "/health" && request.method === "GET") response = cors(json({ ok: true, service: BRAND, poweredBy: POWERED_BY, company: COMPANY, division: "IT Division", runtime: "cloudflare-worker", modes: ["auto", "medical", "voice"], medicalKnowledge: MEDICAL_BOOK_KNOWLEDGE_VERSION, fastModel: FAST_MODEL }));
+    if (url.pathname === "/health" && request.method === "GET") response = cors(json({ ok: true, service: BRAND, poweredBy: POWERED_BY, company: COMPANY, division: "IT Division", runtime: "cloudflare-worker", modes: ["auto", "medical", "voice", "bedrock"], medicalKnowledge: MEDICAL_BOOK_KNOWLEDGE_VERSION, fastModel: FAST_MODEL, bedrock: { configured: bedrockConfigured(env), model: bedrockConfigured(env) ? bedrockModel(env) : null, region: env.AWS_REGION || "us-east-1" } }));
     else if (url.pathname === "/v1/admin/login" && request.method === "POST") {
       const b: any = await request.json(); const token = typeof b?.token === "string" ? b.token : "";
       if (!env.ADMIN_TOKEN || !token || !isAdminRequest(new Request(request.url, { headers: { authorization: `Bearer ${token}` } }), env.ADMIN_TOKEN)) response = cors(json({ error: "Authentication failed" }, 401));
@@ -136,11 +140,11 @@ export default { async fetch(request: Request, env: Env): Promise<Response> {
     } else if (url.pathname === "/v1/admin/logout" && request.method === "POST") response = cors(json({ ok: true }, 200, { "set-cookie": clearAdminCookie }));
     else if (url.pathname === "/v1/admin/status" && request.method === "GET") {
       if (!isAdminRequest(request, env.ADMIN_TOKEN)) response = cors(json({ error: "Unauthorized" }, 401));
-      else response = cors(json({ ok: true, admin: true, service: BRAND, security: "hardened", secretsConfigured: { groq: !!env.GROQ_API_KEY, google: !!env.GOOGLE_API_KEY, nvidia: !!env.NVIDIA_API_KEY, medical: !!env.HF_TOKEN, elevenlabs: !!env.ELEVENLABS_API_KEY, admin: !!env.ADMIN_TOKEN }, analyticsConfigured: !!env.NEXA_ANALYTICS, medicalKnowledge: MEDICAL_BOOK_KNOWLEDGE_VERSION, fastModel: FAST_MODEL }));
+      else response = cors(json({ ok: true, admin: true, service: BRAND, security: "hardened", secretsConfigured: { groq: !!env.GROQ_API_KEY, google: !!env.GOOGLE_API_KEY, nvidia: !!env.NVIDIA_API_KEY, medical: !!env.HF_TOKEN, elevenlabs: !!env.ELEVENLABS_API_KEY, admin: !!env.ADMIN_TOKEN, bedrock: bedrockConfigured(env) }, bedrock: { configured: bedrockConfigured(env), model: bedrockConfigured(env) ? bedrockModel(env) : null, region: env.AWS_REGION || "us-east-1" }, analyticsConfigured: !!env.NEXA_ANALYTICS, medicalKnowledge: MEDICAL_BOOK_KNOWLEDGE_VERSION, fastModel: FAST_MODEL }));
     } else if (url.pathname === "/v1/admin/traffic" && request.method === "GET") {
       if (!isAdminRequest(request, env.ADMIN_TOKEN)) response = cors(json({ ok: true, configured: !!env.NEXA_ANALYTICS, requests: traffic.requests, errors: traffic.errors, uptimeSeconds: Math.floor((Date.now() - traffic.startedAt) / 1000), lastRequestAt: traffic.lastRequestAt ? new Date(traffic.lastRequestAt).toISOString() : null }));
       else response = cors(json({ ok: true, configured: !!env.NEXA_ANALYTICS, requests: traffic.requests, errors: traffic.errors, uptimeSeconds: Math.floor((Date.now() - traffic.startedAt) / 1000), lastRequestAt: traffic.lastRequestAt ? new Date(traffic.lastRequestAt).toISOString() : null }));
-    } else if (url.pathname === "/v1/models" && request.method === "GET") response = cors(json({ brand: BRAND, poweredBy: POWERED_BY, models: [{ id: "auto", name: "Nexa Auto", type: "general", fast: true }, { id: "medical", name: "Nexa Medical", type: "medical", fast: true }, { id: "voice", name: "Nexa Voice", type: "voice" }] }));
+    } else if (url.pathname === "/v1/models" && request.method === "GET") response = cors(json({ brand: BRAND, poweredBy: POWERED_BY, models: [{ id: "auto", name: "Nexa Auto", type: "general", fast: true }, { id: "medical", name: "Nexa Medical", type: "medical", fast: true }, { id: "voice", name: "Nexa Voice", type: "voice" }, { id: "bedrock", name: "Nexa Bedrock", type: "general", configured: bedrockConfigured(env), model: bedrockConfigured(env) ? bedrockModel(env) : null }] }));
     else if (url.pathname === "/v1/medical/specialties" && request.method === "GET") response = cors(json({ specialties: detectMedicalSpecialties(url.searchParams.get("q") || ""), directory: "verified-only" }));
     else if (url.pathname === "/v1/medical/providers" && request.method === "GET") response = cors(json(recommendMedicalProviders(url.searchParams.get("q") || "", url.searchParams.get("location") || "", (url.searchParams.get("type") as any) || undefined)));
     else if (url.pathname === "/v1/voice/capabilities" && request.method === "GET") response = cors(json({ brand: BRAND, product: "Nexa Voice", speechToText: true, textToSpeech: true, translationToEnglish: true, providers: { elevenlabs: !!env.ELEVENLABS_API_KEY, cloudflare: true }, languages: ["en", "hi", "ur", "doi", "ks", "goj"], formats: ["mp3", "opus", "wav"] }));
