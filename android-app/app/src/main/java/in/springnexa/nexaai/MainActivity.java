@@ -63,7 +63,9 @@ public class MainActivity extends Activity {
     private final ArrayList<JSONObject> history = new ArrayList<>();
     private SharedPreferences prefs;
 
-    private void toast(String message) { runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show()); }\n\n    private int dp(float v) { return (int)(v * getResources().getDisplayMetrics().density + .5f); }
+    private void toast(String message) { runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show()); }
+
+    private int dp(float v) { return (int)(v * getResources().getDisplayMetrics().density + .5f); }
 
     private TextView text(String s, float size, int color) {
         TextView t = new TextView(this);
