@@ -264,7 +264,7 @@ public class MainActivity extends Activity {
         if (busy) return;
         String text = composer.getText().toString().trim();
         if (text.isEmpty()) return;
-        messages.removeViewAt(messages.getChildCount() > 0 ? 0 : 0);
+        if (history.isEmpty()) messages.removeAllViews();
         addMessage(text, true);
         composer.setText("");
         busy = true;
