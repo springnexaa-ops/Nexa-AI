@@ -52,8 +52,40 @@ async function authApi(request:Request,env:any,url:URL):Promise<Response|null>{
     return json({ok:true,token,expiresAt,user:publicUser(u)});
   }
   if(url.pathname==='/v1/auth/me'&&request.method==='GET'){const u=await userFromRequest(request,env);return u?json({ok:true,user:publicUser(u)}):json({error:'Authentication required'},401)}
-  if(url.pathname==='/v1/auth/logout'&&request.method==='POST'){await userStore().deleteSession(tokenFrom(request));return json({ok:true})}
+  if(url.pathname==='/v1/auth/logout'&&request.method==='POST'){
+    const token=tokenFrom(request); const u=await userFromRequest(request,env);
+    if(u) await userStore().recordSecurityEvent({id:makeId(),userId:u.id,eventType:'logout',metadata:'{}',createdAt:new Date().toISOString()});
+    await userStore().deleteSession(token); return json({ok:true});
+  }
   if(url.pathname==='/v1/auth/guest'&&request.method==='GET'){const u=await userFromRequest(request,env);return json({authenticated:!!u,remaining:u?null:guestRemaining(request),limit:GUEST_LIMIT})}
+  if(url.pathname==='/v1/privacy/consent'&&request.method==='POST'){
+    const u=await userFromRequest(request,env); if(!u)return json({error:'Authentication required',code:'AUTH_REQUIRED'},401);
+    const b:any=await request.json().catch(()=>({}));
+    const noticeVersion=clean(b.noticeVersion,60)||'2026-09-18';
+    const purposes=Array.isArray(b.purposes)?b.purposes.map((x:any)=>clean(x,80)).filter(Boolean).slice(0,20):[];
+    const granted=b.granted===true;
+    await userStore().recordConsent({id:makeId(),userId:u.id,noticeVersion,purposes:JSON.stringify(purposes),granted,createdAt:new Date().toISOString()});
+    await userStore().recordSecurityEvent({id:makeId(),userId:u.id,eventType:granted?'consent_granted':'consent_withdrawn',metadata:JSON.stringify({noticeVersion,purposes}),createdAt:new Date().toISOString()});
+    return json({ok:true,noticeVersion,purposes,granted});
+  }
+  if(url.pathname==='/v1/privacy/consent'&&request.method==='GET'){
+    const u=await userFromRequest(request,env); if(!u)return json({error:'Authentication required',code:'AUTH_REQUIRED'},401);
+    return json({ok:true,noticeVersion:'2026-09-18',events:await userStore().listConsents(u.id)});
+  }
+  if(url.pathname==='/v1/privacy/request'&&request.method==='POST'){
+    const u=await userFromRequest(request,env); if(!u)return json({error:'Authentication required',code:'AUTH_REQUIRED'},401);
+    const b:any=await request.json().catch(()=>({}));
+    const requestType=clean(b.type,30).toLowerCase();
+    if(!['access','correction','erasure','grievance','data-portability'].includes(requestType))return json({error:'Unsupported privacy request type.'},400);
+    const details=clean(b.details,2000); const now=new Date().toISOString(); const id=makeId();
+    await userStore().createPrivacyRequest({id,userId:u.id,requestType,details,createdAt:now});
+    await userStore().recordSecurityEvent({id:makeId(),userId:u.id,eventType:'privacy_request',metadata:JSON.stringify({requestId:id,type:requestType}),createdAt:now});
+    return json({ok:true,requestId:id,status:'received'},202);
+  }
+  if(url.pathname==='/v1/privacy/request'&&request.method==='GET'){
+    const u=await userFromRequest(request,env); if(!u)return json({error:'Authentication required',code:'AUTH_REQUIRED'},401);
+    return json({ok:true,requests:await userStore().listPrivacyRequests(u.id)});
+  }
   if(url.pathname.startsWith('/v1/admin/users')){
     if(!isAdmin(request,env))return json({error:'Unauthorized'},401);
     const suffix=url.pathname.slice('/v1/admin/users'.length).replace(/^\//,'');
