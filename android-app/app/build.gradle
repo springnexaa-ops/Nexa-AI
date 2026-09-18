@@ -1,0 +1,17 @@
+plugins { id "com.android.application" }
+
+android {
+    namespace "in.springnexa.nexaai"
+    compileSdk 35
+    defaultConfig {
+        applicationId "in.springnexa.nexaai"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "1.0.0"
+    }
+    buildTypes {
+        release { minifyEnabled false; shrinkResources false }
+    }
+}
+dependencies { implementation "androidx.appcompat:appcompat:1.7.0" }
