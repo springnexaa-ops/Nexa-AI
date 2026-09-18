@@ -3,6 +3,7 @@ plugins { id "com.android.application" }
 android {
     namespace "in.springnexa.nexaai"
     compileSdk 35
+
     defaultConfig {
         applicationId "in.springnexa.nexaai"
         minSdk 24
@@ -10,8 +11,23 @@ android {
         versionCode 1
         versionName "1.0.0"
     }
+
     buildTypes {
-        release { minifyEnabled false; shrinkResources false }
+        release {
+            minifyEnabled false
+            shrinkResources false
+        }
     }
 }
-dependencies { implementation "androidx.appcompat:appcompat:1.7.0" }
+
+configurations.configureEach {
+    resolutionStrategy {
+        force "org.jetbrains.kotlin:kotlin-stdlib:1.8.22"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22"
+        force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22"
+    }
+}
+
+dependencies {
+    implementation "androidx.appcompat:appcompat:1.7.0"
+}
