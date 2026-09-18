@@ -3,8 +3,12 @@ name: NEXA Medical Production Gate
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "android-app/**"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "android-app/**"
 
 permissions:
   contents: read
@@ -21,23 +25,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Install dependencies
         run: npm install
-
       - name: TypeScript typecheck
         run: npm run typecheck
-
       - name: Medical audit tests
         run: npm run test:medical-audit
-
       - name: Cloudflare Wrangler dry-run
         run: npm run cf:dry-run
-
       - name: Production gate
         run: npm run production:gate
