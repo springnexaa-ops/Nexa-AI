@@ -35,7 +35,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.ArrayList;
-import java.util.Base64;
+import android.util.Base64;
 import java.util.Locale;
 
 import javax.crypto.Cipher;
@@ -312,10 +312,10 @@ public class MainActivity extends Activity {
     private void saveSecret(String name,String value)throws Exception {
         KeyStore ks=KeyStore.getInstance("AndroidKeyStore");ks.load(null);SecretKey key;
         if(!ks.containsAlias(KEY_ALIAS)){KeyGenerator kg=KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore");kg.init(new KeyGenParameterSpec.Builder(KEY_ALIAS,KeyProperties.PURPOSE_ENCRYPT|KeyProperties.PURPOSE_DECRYPT).setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).setUserAuthenticationRequired(false).build());key=kg.generateKey();}else key=((KeyStore.SecretKeyEntry)ks.getEntry(KEY_ALIAS,null)).getSecretKey();
-        Cipher c=Cipher.getInstance("AES/GCM/NoPadding");c.init(Cipher.ENCRYPT_MODE,key);String iv=Base64.getEncoder().encodeToString(c.getIV());String ct=Base64.getEncoder().encodeToString(c.doFinal(value.getBytes(StandardCharsets.UTF_8)));prefs.edit().putString("secret_"+name,iv+"."+ct).apply();
+        Cipher c=Cipher.getInstance("AES/GCM/NoPadding");c.init(Cipher.ENCRYPT_MODE,key);String iv=Base64.encodeToString(c.getIV(), Base64.NO_WRAP);String ct=Base64.encodeToString(c.doFinal(value.getBytes(StandardCharsets.UTF_8)), Base64.NO_WRAP);prefs.edit().putString("secret_"+name,iv+"."+ct).apply();
     }
 
-    private String loadSecret(String name){try{String packed=prefs.getString("secret_"+name,null);if(packed==null)return null;String[] p=packed.split("\\.",2);KeyStore ks=KeyStore.getInstance("AndroidKeyStore");ks.load(null);SecretKey key=((KeyStore.SecretKeyEntry)ks.getEntry(KEY_ALIAS,null)).getSecretKey();Cipher c=Cipher.getInstance("AES/GCM/NoPadding");c.init(Cipher.DECRYPT_MODE,key,new GCMParameterSpec(128,Base64.getDecoder().decode(p[0])));return new String(c.doFinal(Base64.getDecoder().decode(p[1])),StandardCharsets.UTF_8);}catch(Exception e){return null;}}
+    private String loadSecret(String name){try{String packed=prefs.getString("secret_"+name,null);if(packed==null)return null;String[] p=packed.split("\\.",2);KeyStore ks=KeyStore.getInstance("AndroidKeyStore");ks.load(null);SecretKey key=((KeyStore.SecretKeyEntry)ks.getEntry(KEY_ALIAS,null)).getSecretKey();Cipher c=Cipher.getInstance("AES/GCM/NoPadding");c.init(Cipher.DECRYPT_MODE,key,new GCMParameterSpec(128,Base64.decode(p[0], Base64.NO_WRAP)));return new String(c.doFinal(Base64.decode(p[1], Base64.NO_WRAP)),StandardCharsets.UTF_8);}catch(Exception e){return null;}}
     private void deleteSecret(){prefs.edit().remove("secret_session_token").apply();}
 
     private void chooseMode(){modelButton.setText(modelButton.getText().toString().startsWith("Medical")?"Auto  ▾":"Medical  ▾");}
