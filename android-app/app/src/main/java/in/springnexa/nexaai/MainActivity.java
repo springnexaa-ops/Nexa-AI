@@ -63,7 +63,7 @@ public class MainActivity extends Activity {
     private final ArrayList<JSONObject> history = new ArrayList<>();
     private SharedPreferences prefs;
 
-    private int dp(float v) { return (int)(v * getResources().getDisplayMetrics().density + .5f); }
+    private void toast(String message) { runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show()); }\n\n    private int dp(float v) { return (int)(v * getResources().getDisplayMetrics().density + .5f); }
 
     private TextView text(String s, float size, int color) {
         TextView t = new TextView(this);
@@ -295,7 +295,7 @@ public class MainActivity extends Activity {
 
     private void privacyRequest(String type) {
         if(!authenticated){showAccount();return;} EditText detail=field("Optional details",false);LinearLayout l=form();l.addView(detail);
-        new AlertDialog.Builder(this).setTitle("Privacy request: "+type).setView(l).setPositiveButton("Submit",(d,w)->new Thread(()->{try{JSONObject b=new JSONObject();b.put("type",type);b.put("details",detail.getText().toString());JSONObject r=postJson(API_PRIVACY,b,loadSecret("session_token"));toast(r.optString("ok")?"Request received: "+r.optString("requestId",""):"Request failed.");}catch(Exception e){toast("Could not submit request.");}}).start()).setNegativeButton("Cancel",null).show();
+        new AlertDialog.Builder(this).setTitle("Privacy request: "+type).setView(l).setPositiveButton("Submit",(d,w)->new Thread(()->{try{JSONObject b=new JSONObject();b.put("type",type);b.put("details",detail.getText().toString());JSONObject r=postJson(API_PRIVACY,b,loadSecret("session_token"));toast(r.optBoolean("ok")?"Request received: "+r.optString("requestId",""):"Request failed.");}catch(Exception e){toast("Could not submit request.");}}).start()).setNegativeButton("Cancel",null).show();
     }
 
     private void logout(){String token=loadSecret("session_token");new Thread(()->{try{if(token!=null)postJson(API_LOGOUT,new JSONObject(),token);}catch(Exception ignored){}deleteSecret();runOnUiThread(()->{authenticated=false;accountButton.setTextColor(Color.rgb(148,163,184));Toast.makeText(this,"Signed out. Session removed.",Toast.LENGTH_SHORT).show();});}).start();}
