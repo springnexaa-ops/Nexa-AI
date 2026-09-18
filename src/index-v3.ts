@@ -86,6 +86,15 @@ async function authApi(request:Request,env:any,url:URL):Promise<Response|null>{
     const u=await userFromRequest(request,env); if(!u)return json({error:'Authentication required',code:'AUTH_REQUIRED'},401);
     return json({ok:true,requests:await userStore().listPrivacyRequests(u.id)});
   }
+  if(url.pathname==='/v1/admin/privacy/requests'&&request.method==='GET'){
+    if(!isAdmin(request,env))return json({error:'Unauthorized'},401);
+    return json({ok:true,requests:await userStore().listPrivacyRequests()});
+  }
+  if(url.pathname==='/v1/admin/security/events'&&request.method==='GET'){
+    if(!isAdmin(request,env))return json({error:'Unauthorized'},401);
+    const limit=Number(url.searchParams.get('limit')||500);
+    return json({ok:true,events:await userStore().listSecurityEvents(limit)});
+  }
   if(url.pathname.startsWith('/v1/admin/users')){
     if(!isAdmin(request,env))return json({error:'Unauthorized'},401);
     const suffix=url.pathname.slice('/v1/admin/users'.length).replace(/^\//,'');
