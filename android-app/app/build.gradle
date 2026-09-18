@@ -16,6 +16,9 @@ android {
         release {
             minifyEnabled false
             shrinkResources false
+            // Sign the downloadable CI release with the SDK debug key for testing.
+            // Production/Play Store builds should use a protected dedicated keystore.
+            signingConfig signingConfigs.debug
         }
     }
 }
