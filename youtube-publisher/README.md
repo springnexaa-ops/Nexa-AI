@@ -16,6 +16,30 @@ Spring Creation / @springcreation1 channel after it is rebranded as WOW NEXA.
 GitHub stores the automation code and metadata. Large video binaries should not
 normally be committed to Git.
 
+## Google OAuth setup
+
+1. Create/select a Google Cloud project.
+2. Enable **YouTube Data API v3**.
+3. Create an OAuth client for a **Desktop app**.
+4. On a computer with Node.js installed, clone this repository.
+5. Run:
+
+   `YOUTUBE_CLIENT_ID="..." YOUTUBE_CLIENT_SECRET="..." node youtube-publisher/get-refresh-token.mjs`
+
+6. Open the URL printed by the script and authorize the Google account that owns
+   or controls the target YouTube channel.
+7. The local helper prints a refresh token. Store that token securely and never
+   commit it or paste it into chat.
+8. Add the following values under GitHub repository **Settings -> Secrets and
+   variables -> Actions**:
+
+   - `YOUTUBE_CLIENT_ID`
+   - `YOUTUBE_CLIENT_SECRET`
+   - `YOUTUBE_REFRESH_TOKEN`
+
+The helper uses a localhost OAuth callback and offline access. Google documents
+OAuth authorization and refresh-token use for long-running YouTube API jobs.
+
 ## Required GitHub Actions secrets
 
 Create these repository secrets manually:
@@ -47,7 +71,7 @@ thumbnail, audience setting and channel before changing the queue item to
 
 ## Important
 
-YouTube's API may restrict uploads from unverified API projects to private
-viewing until the project passes Google's required audit. Treat the first
-automated upload as a validation step rather than assuming it will publish
-publicly immediately.
+YouTube's API documentation states that uploads from unverified API projects
+created after July 28, 2020 can be restricted to private viewing until the
+project passes Google's audit. Treat the first automated upload as a validation
+step rather than assuming it will publish publicly immediately.
