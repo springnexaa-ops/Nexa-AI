@@ -41,8 +41,7 @@ if (!item.title) throw new Error(`title is required for ${item.queue_id}`);
 
 const client = new google.auth.OAuth2(
   required("YOUTUBE_CLIENT_ID"),
-  required("YOUTUBE_CLIENT_SECRET"),
-  "urn:ietf:wg:oauth:2.0:oob"
+  required("YOUTUBE_CLIENT_SECRET")
 );
 client.setCredentials({ refresh_token: required("YOUTUBE_REFRESH_TOKEN") });
 
@@ -78,9 +77,7 @@ console.log(`Uploading: ${item.title}`);
 const upload = await youtube.videos.insert({
   part: ["snippet", "status"],
   requestBody: body,
-  media: {
-    body: fs.createReadStream(videoPath)
-  }
+  media: { body: fs.createReadStream(videoPath) }
 });
 
 const videoId = upload.data.id;
