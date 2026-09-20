@@ -1,0 +1,16 @@
+[
+  {
+    "queue_id": "wow-nexa-001",
+    "status": "draft",
+    "title": "Kids vs Parents vs Grandparents — Who Knows the Family Best?",
+    "description": "A wholesome family challenge from WOW NEXA. Subscribe for challenges, comedy, puzzles, surprises and entertainment for the whole family.",
+    "tags": ["family challenge", "family entertainment", "funny challenge", "generational challenge", "WOW NEXA"],
+    "category_id": "24",
+    "privacy": "private",
+    "made_for_kids": false,
+    "default_language": "en",
+    "default_audio_language": "en",
+    "video_url": "",
+    "thumbnail_url": ""
+  }
+]
