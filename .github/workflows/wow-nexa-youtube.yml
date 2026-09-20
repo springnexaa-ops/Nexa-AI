@@ -1,0 +1,50 @@
+name: WOW NEXA YouTube Publisher
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "youtube-publisher/queue.json"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wow-nexa-youtube-publisher
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install YouTube API client
+        run: npm install --no-save googleapis@latest
+
+      - name: Publish ready queue item
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: node youtube-publisher/publish.mjs
+
+      - name: Commit publishing state
+        run: |
+          if git diff --quiet -- youtube-publisher/queue.json youtube-publisher/published.json; then
+            echo "No publishing state changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add youtube-publisher/queue.json youtube-publisher/published.json
+          git commit -m "chore: record WOW NEXA YouTube publication"
+          git push
