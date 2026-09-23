@@ -1,5 +1,6 @@
 const MAX_BYTES = 20 * 1024 * 1024;
 const MODEL = "gemini-3.8-flash";
+const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash"];
 
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
@@ -94,15 +95,16 @@ export async function analyzeUploadedEeg(request: Request, env: { GOOGLE_API_KEY
       modality: "EEG",
       file: { name: value.name, size: value.size },
       provider: "google",
-      model,
+      model: usedModel,
       analysis,
       disclaimer: "AI-assisted EEG review is not a definitive diagnosis and must be reviewed by a qualified clinician/neurophysiologist.",
     });
   } catch (error) {
     return json(500, {
       ok: false,
-      error: "EEG analysis failed.",
+      error: "EEG analysis failed before a provider result was returned.",
       detail: error instanceof Error ? error.message : "Unknown EEG analysis error",
+      hint: "Check PDF size/validity and the configured Google AI key/model. Retry once after a transient provider error.",
     });
   }
 }
