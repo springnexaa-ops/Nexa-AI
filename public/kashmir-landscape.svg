@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 900" preserveAspectRatio="xMidYMid slice">
+<defs>
+ <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#74c8e9"/><stop offset=".55" stop-color="#c9edf8"/><stop offset="1" stop-color="#f4fbfd"/></linearGradient>
+ <linearGradient id="lake" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#7bc9df"/><stop offset="1" stop-color="#245c78"/></linearGradient>
+ <linearGradient id="snow" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#dceff5"/></linearGradient>
+ <linearGradient id="mount" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#355d70"/><stop offset="1" stop-color="#173d4e"/></linearGradient>
+ <linearGradient id="land" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#4d8065"/><stop offset="1" stop-color="#173f31"/></linearGradient>
+ <filter id="blur"><feGaussianBlur stdDeviation="18"/></filter>
+</defs>
+<rect width="1800" height="900" fill="url(#sky)"/>
+<circle cx="1500" cy="155" r="90" fill="#fff" opacity=".45" filter="url(#blur)"/>
+<!-- Kashmir snow Himalaya -->
+<path d="M0 560 L180 355 310 465 485 205 625 420 790 250 960 470 1120 315 1280 475 1460 235 1660 445 1800 350 V900 H0Z" fill="url(#mount)"/>
+<path d="M80 560 L180 355 238 420 310 465 485 205 555 335 625 420 790 250 850 335 960 470 1120 315 1185 390 1280 475 1460 235 1540 325 1660 445 1800 350 V525 L1660 470 1540 420 1460 330 1380 505 1280 535 1185 455 1120 365 1030 525 960 520 850 400 790 305 700 500 625 470 555 365 485 260 400 515 310 510 238 465 180 400 80 590Z" fill="url(#snow)" opacity=".98"/>
+<!-- distant Ladakh ridges -->
+<path d="M0 610 Q220 525 420 615 T820 600 T1220 620 T1800 570 V900 H0Z" fill="#8ba6ad" opacity=".7"/>
+<!-- lake -->
+<path d="M0 610 Q450 565 900 625 T1800 595 V900 H0Z" fill="url(#lake)"/>
+<g opacity=".25" stroke="#e8fbff" fill="none">
+ <path d="M80 690 Q450 650 820 700 T1700 680"/>
+ <path d="M140 755 Q500 720 920 760 T1700 740"/>
+ <path d="M250 820 Q650 790 1040 825 T1600 810"/>
+</g>
+<!-- Kashmir meadow / Chinar silhouettes -->
+<path d="M0 780 Q330 710 650 790 T1200 780 T1800 750 V900 H0Z" fill="url(#land)"/>
+<g fill="#245844" opacity=".9">
+ <path d="M145 805 l18-150 8 0 12 150z"/><circle cx="170" cy="630" r="52"/><circle cx="135" cy="650" r="35"/><circle cx="207" cy="655" r="38"/>
+ <path d="M1550 820 l20-165 8 0 12 165z"/><circle cx="1580" cy="655" r="55"/><circle cx="1538" cy="680" r="34"/><circle cx="1620" cy="680" r="38"/>
+</g>
+<!-- subtle Ladakh lake reflection band -->
+<path d="M1180 640 Q1450 615 1740 645 L1740 715 Q1450 690 1180 715Z" fill="#b8e7ee" opacity=".22"/>
+<text x="90" y="105" font-family="Georgia,serif" font-size="28" fill="#173d4e" opacity=".65" letter-spacing="5">JAMMU • KASHMIR • LADAKH</text>
+</svg>
