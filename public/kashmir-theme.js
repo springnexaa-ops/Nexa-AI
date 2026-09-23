@@ -3,7 +3,7 @@
 function install(){if(document.getElementById('nexaKashmirTheme'))return;const s=document.createElement('style');s.id='nexaKashmirTheme';s.textContent=
 `:root{--jk-sky:#73c7e8;--jk-sky-deep:#3c9fc8;--jk-ice:#eaf9ff;--jk-mountain:#234c5f;--jk-chinar:#245844;--jk-saffron:#d8a642;--jk-walnut:#5a4331;--jk-ink:#123040;--jk-line:rgba(49,146,183,.22)}
 body.nexaKashmir{background:#eaf9ff!important;color:var(--jk-ink)!important}
-body.nexaKashmir:before{content:"";display:block!important;position:fixed;inset:0;z-index:-5;pointer-events:none;background:linear-gradient(180deg,rgba(234,249,255,.34),rgba(234,249,255,.78)),url("/kashmir-landscape.svg") center bottom/cover no-repeat!important;opacity:.42!important}
+body.nexaKashmir:before{content:"";display:block!important;position:fixed;inset:0;z-index:-5;pointer-events:none;background:linear-gradient(180deg,rgba(234,249,255,.24),rgba(234,249,255,.68)),url("/kashmir-landscape.svg") center bottom/cover no-repeat!important;opacity:.55!important}
 body.nexaKashmir:after{content:"";display:block!important;position:fixed;inset:0;z-index:-4;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(36,88,68,.08));}
 body.nexaKashmir .nxSide{background:rgba(245,252,255,.91)!important;border-right:1px solid var(--jk-line)!important;backdrop-filter:blur(18px)!important}
 body.nexaKashmir .nxBrand b,body.nexaKashmir .nxTitle,body.nexaKashmir .nxWelcome h1{color:var(--jk-ink)!important;text-shadow:none!important}
@@ -36,3 +36,9 @@ document.head.appendChild(s)}
 function init(){install();document.body.classList.add('nexaKashmir');const b=document.createElement('div');b.className='nxKashmirBar';b.innerHTML='<span>J&K • HIMALAYAN LANDSCAPES</span><button type="button" id="nxKashmirToggle">Kashmir theme</button>';document.body.appendChild(b);const t=b.querySelector('button');const sync=()=>{t.textContent=document.body.classList.contains('nexaKashmir')?'Kashmir theme':'Standard theme'};t.onclick=()=>{const on=!document.body.classList.contains('nexaKashmir');document.body.classList.toggle('nexaKashmir',on);localStorage.setItem('nexa.kashmir.theme',on?'on':'off');sync()};sync()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(init,600));else setTimeout(init,600);window.addEventListener('load',()=>setTimeout(init,700));
 })();
+/* UI/UX Pro Max implementation: accessibility, touch targets, focus, responsive stability */
+body.nexaKashmir button,body.nexaKashmir a,body.nexaKashmir [role="button"]{cursor:pointer}
+body.nexaKashmir button:focus-visible,body.nexaKashmir a:focus-visible,body.nexaKashmir textarea:focus-visible,body.nexaKashmir input:focus-visible{outline:3px solid rgba(60,159,200,.55)!important;outline-offset:2px!important}
+body.nexaKashmir .nxKashmirBar button{min-height:44px;min-width:44px}
+body.nexaKashmir img{max-width:100%;height:auto}
+@media(max-width:768px){body.nexaKashmir{font-size:16px!important}body.nexaKashmir .nxWelcome p{line-height:1.6}body.nexaKashmir .nxKashmirBar{max-width:calc(100vw - 20px)}}
