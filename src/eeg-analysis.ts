@@ -56,33 +56,57 @@ export async function analyzeUploadedEeg(request: Request, env: { GOOGLE_API_KEY
     if (value.size > MAX_BYTES) return json(413, { ok: false, error: "EEG PDF is larger than the 20 MB upload limit." });
 
     const data = base64(new Uint8Array(await value.arrayBuffer()));
-    const model = env.GOOGLE_MODEL || MODEL;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": env.GOOGLE_API_KEY },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: EEG_PROMPT }] },
-        contents: [{
-          role: "user",
-          parts: [
-            { text: `Review the uploaded EEG PDF named "${value.name}". Analyze every page that contains EEG data or the written EEG report.` },
-            { inlineData: { mimeType: "application/pdf", data } },
-          ],
-        }],
-        generationConfig: { maxOutputTokens: 6000 },
-      }),
-      signal: AbortSignal.timeout(60000),
-    });
+    const configured = typeof env.GOOGLE_MODEL === "string" && env.GOOGLE_MODEL.trim() ? env.GOOGLE_MODEL.trim() : MODEL;
+    const models = [configured, ...FALLBACK_MODELS.filter((m) => m !== configured)];
+    const requestBody = {
+      systemInstruction: { parts: [{ text: EEG_PROMPT }] },
+      contents: [{
+        role: "user",
+        parts: [
+          { text: `Review the uploaded EEG PDF named "${value.name}". Analyze every page that contains EEG data or the written EEG report.` },
+          { inlineData: { mimeType: "application/pdf", data } },
+        ],
+      }],
+      generationConfig: { maxOutputTokens: 6000 },
+    };
 
-    const raw = await response.text();
+    let response: Response | null = null;
     let payload: any = null;
-    try { payload = JSON.parse(raw); } catch { payload = null; }
-    if (!response.ok) {
-      return json(response.status >= 500 ? 502 : response.status, {
+    const providerErrors: string[] = [];
+    let usedModel = configured;
+
+    for (const model of models) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+      try {
+        const candidate = await fetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-goog-api-key": env.GOOGLE_API_KEY },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(120000),
+        });
+        const raw = await candidate.text();
+        let candidatePayload: any = null;
+        try { candidatePayload = JSON.parse(raw); } catch { candidatePayload = null; }
+
+        if (candidate.ok) {
+          response = candidate;
+          payload = candidatePayload;
+          usedModel = model;
+          break;
+        }
+
+        providerErrors.push(`${model}: HTTP ${candidate.status} ${candidatePayload?.error?.message || raw.slice(0, 220)}`);
+        if (candidate.status === 401 || candidate.status === 403) break;
+      } catch (error) {
+        providerErrors.push(`${model}: ${error instanceof Error ? error.message : "request failed"}`);
+      }
+    }
+
+    if (!response || !response.ok) {
+      return json(502, {
         ok: false,
-        error: "EEG analysis provider returned an error.",
-        detail: payload?.error?.message || raw.slice(0, 500) || `HTTP ${response.status}`,
+        error: "EEG analysis provider could not process this PDF.",
+        detail: providerErrors.join(" | ").slice(0, 1800),
       });
     }
 
