@@ -7,8 +7,9 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
+    "check:public-js": "node --check public/app-functional.js && node --check public/auth-fetch.js && node --check public/auth-widget.js && node --check public/nexa-shell.js && node --check public/cinematic-overhaul.js && node --check public/nexa-chat-bridge.js && node --check public/medical-ui.js && node --check public/scroll-fix.js && node --check public/eco-ui.js && node --check public/editorial-ui.js && node --check public/kashmir-theme.js",
     "test:medical-audit": "tsx tests/medical-audit.test.ts",
-    "test": "npm run typecheck && npm run test:medical-audit",
+    "test": "npm run typecheck && npm run check:public-js && npm run test:medical-audit",
     "cf:dry-run": "wrangler deploy --dry-run",
     "production:gate": "npm test && npm run cf:dry-run"
   },
