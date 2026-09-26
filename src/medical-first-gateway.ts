@@ -1,12 +1,12 @@
 import worker, { UserStoreDO, MedicalEvidenceDO } from "./entry";
 import { isMedicalQuery } from "./medical-directory";
 import { getMedicalInternalContext } from "./medical-internal-knowledge";
-import { queryLiveEvidence, queryPrivateMedicalKnowledge } from "./medical-live-evidence";
+import { queryMedicalEvidence } from "./medical-live-evidence";
 
 export { UserStoreDO, MedicalEvidenceDO };
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
-const MEDICAL_INFERENCE_MODEL = "@cf/google/gemma-4-26b-a4b-it";
+const MEDICAL_INFERENCE_MODEL = "@cf/zai-org/glm-4.7-flash";
 
 function looksLikeMedical(text: string): boolean {
   return isMedicalQuery(text) || /\b(ncs|ncvs|nerve conduction|emg|edx|electromyograph|rns|repetitive nerve stimulation|eeg|v[ .-]?ep|bera|baer|neuromuscular|neuropathy|radiculopathy|myopathy|seizure)\b/i.test(text);
@@ -64,12 +64,13 @@ export default {
     let publicHits: any[] = [];
     let privateHits: any[] = [];
     try {
-      [publicHits, privateHits] = await Promise.all([
-        queryLiveEvidence(env, userText, 8),
-        queryPrivateMedicalKnowledge(env, userText, 6)
-      ]);
+      const evidence = await queryMedicalEvidence(env, userText, { public: 8, private: 8 });
+      publicHits = evidence.publicHits;
+      privateHits = evidence.privateHits;
     } catch {
-      try { publicHits = await queryLiveEvidence(env, userText, 8); } catch {}
+      // Keep the request alive if retrieval is temporarily unavailable. The model
+      // receives an explicit no-evidence instruction rather than fabricated context.
+      publicHits = [];
       privateHits = [];
     }
 
