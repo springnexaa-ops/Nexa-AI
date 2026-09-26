@@ -31,8 +31,12 @@ body.nexaKashmir .nxTitle:after{content:" • JAMMU & KASHMIR • HEALTHIER TOMO
 .nxKashmirMark{display:inline-flex;align-items:center;gap:6px;margin-left:6px;color:#3c8eb0;font-size:9px;font-weight:800;letter-spacing:.06em}.nxKashmirMark i{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--jk-sky);box-shadow:0 0 0 3px rgba(115,199,232,.16)}
 .nxKashmirBar{position:fixed;left:16px;bottom:16px;z-index:9998;display:flex;align-items:center;gap:7px;padding:5px 7px;border:1px solid rgba(60,159,200,.2);background:rgba(248,253,255,.94);border-radius:12px;box-shadow:0 8px 24px rgba(37,103,128,.12);backdrop-filter:blur(10px)}.nxKashmirBar span{font-size:9px;color:#527080;font-weight:800}.nxKashmirBar button{border:0;background:transparent;color:#286e98;border-radius:8px;padding:7px 9px;font-size:10px;font-weight:800}.nxKashmirBar button:hover{background:rgba(115,199,232,.16)}
 @media(max-width:699px){.nxKashmirBar{left:10px;bottom:calc(74px + env(safe-area-inset-bottom));padding:4px 6px}.nxKashmirBar span{display:none}.nxKashmirBar button{padding:7px 8px}}
-@media(prefers-reduced-motion:reduce){body.nexaKashmir *{transition:none!important}}`;
-document.head.appendChild(s)}
+@media(prefers-reduced-motion:reduce){body.nexaKashmir *{transition:none!important}}
+body.nexaKashmir button,body.nexaKashmir a,body.nexaKashmir [role="button"]{cursor:pointer}
+body.nexaKashmir button:focus-visible,body.nexaKashmir a:focus-visible,body.nexaKashmir textarea:focus-visible,body.nexaKashmir input:focus-visible{outline:3px solid rgba(60,159,200,.55)!important;outline-offset:2px!important}
+body.nexaKashmir .nxKashmirBar button{min-height:44px;min-width:44px}
+body.nexaKashmir img{max-width:100%;height:auto}
+@media(max-width:768px){body.nexaKashmir{font-size:16px!important}body.nexaKashmir .nxWelcome p{line-height:1.6}body.nexaKashmir .nxKashmirBar{max-width:calc(100vw - 20px)}}
 function init(){install();document.body.classList.add('nexaKashmir');const b=document.createElement('div');b.className='nxKashmirBar';b.innerHTML='<span>J&K • HIMALAYAN LANDSCAPES</span><button type="button" id="nxKashmirToggle">Kashmir theme</button>';document.body.appendChild(b);const t=b.querySelector('button');const sync=()=>{t.textContent=document.body.classList.contains('nexaKashmir')?'Kashmir theme':'Standard theme'};t.onclick=()=>{const on=!document.body.classList.contains('nexaKashmir');document.body.classList.toggle('nexaKashmir',on);localStorage.setItem('nexa.kashmir.theme',on?'on':'off');sync()};sync()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(init,600));else setTimeout(init,600);window.addEventListener('load',()=>setTimeout(init,700));
 })();
