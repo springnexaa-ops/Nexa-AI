@@ -38,7 +38,7 @@ Use these labels exactly when applicable:
 
 Return ONLY one label from the list above. No punctuation. No explanation. No extra words.
 
-Important: classify from the document content, not the filename alone. If multiple terms appear, choose the actual primary report type represented by the document.`;
+Important classification rules: classify from the document's actual content, not the filename alone. If the document contains an NCS/NCV section, nerve conduction tables, CMAP/SNAP values, motor or sensory nerve studies, F-wave/H-reflex results, or wording such as "Nerve Conduction Studies", classify it as NCS Report even if the document mentions EEG as an exclusion, comparison, referral reason, or unrelated note. Likewise, classify EEG Report only when an actual EEG report/EEG recording interpretation is the primary document. Do not treat a sentence saying that EEG is absent as evidence that the document is an EEG report. If multiple terms appear, choose the actual primary report type represented by the document.`;
 }
 
 function normalizeType(raw: string) {
