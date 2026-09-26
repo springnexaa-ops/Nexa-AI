@@ -19,8 +19,12 @@ function classificationText(text: string) {
 }
 
 async function sha256Bytes(bytes: Uint8Array) {
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, "0")).join("");
+  // Cloudflare Workers' TypeScript definitions require an ArrayBuffer here.
+  // Copy the bytes into a concrete ArrayBuffer to avoid ArrayBufferLike/SharedArrayBuffer typing issues.
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  return [...new Uint8Array(digest)].map((x: number) => x.toString(16).padStart(2, "0")).join("");
 }
 
 async function extractRawPdfText(file: File) {
@@ -30,7 +34,7 @@ async function extractRawPdfText(file: File) {
     const strings: string[] = [];
     // PDF literal strings are only a fallback classifier signal. Clinical analysis
     // always uses the complete toMarkdown result.
-    const re = /\\((?:\\\\|\\\(|\\\)|[^)]){2,500})\\)/g;
+    const re = /\\((?:\\.|[^)]){2,500}\\)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(raw)) && strings.length < 800) {
       strings.push(m[1].replace(/\\([\\()])/g, "$1").replace(/\\[nrt]/g, " "));
