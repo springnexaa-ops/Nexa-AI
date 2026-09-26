@@ -22,6 +22,44 @@ function json(status: number, body: Record<string, unknown>) {
   });
 }
 
+async function resolveGeminiModel(env: any): Promise<string> {
+  const apiKey = String(env.GOOGLE_API_KEY || '').trim();
+  if (!apiKey) throw new Error('GOOGLE_API_KEY is missing');
+
+  const preferred = String(env.GOOGLE_MODEL || '').trim();
+  const r = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(apiKey),
+    { method: 'GET', headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) },
+  );
+  if (!r.ok) {
+    const detail = await r.text().catch(() => '');
+    throw new Error('Gemini model discovery failed (HTTP ' + r.status + '): ' + detail.slice(0, 180));
+  }
+
+  const data: any = await r.json();
+  const models = Array.isArray(data?.models) ? data.models : [];
+  const available = models
+    .filter((m: any) => Array.isArray(m?.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+    .map((m: any) => String(m?.name || '').replace(/^models\//, '').trim())
+    .filter(Boolean);
+
+  if (!available.length) throw new Error('No Gemini model available for generateContent on this API key.');
+
+  if (preferred && available.includes(preferred)) return preferred;
+
+  const rank = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes('flash') && n.includes('latest')) return 0;
+    if (n.includes('flash') && n.includes('2.5')) return 1;
+    if (n.includes('flash') && n.includes('2.0')) return 2;
+    if (n.includes('flash')) return 3;
+    if (n.includes('pro')) return 10;
+    return 20;
+  };
+  available.sort((x, y) => rank(x) - rank(y) || x.localeCompare(y));
+  return available[0];
+}
+
 function cleanText(value: string) {
   return value.replace(/\u0000/g, '').replace(/\r\n/g, '\n').slice(0, MAX_TEXT);
 }
@@ -67,7 +105,7 @@ Important safety rule: this is an assistive preliminary review, not an autonomou
 async function geminiEEG(env: any, value: File, filename: string, mimeType: string) {
   if (!env.GOOGLE_API_KEY) return json(503, { ok: false, error: 'EEG analysis is not configured: GOOGLE_API_KEY is missing.' });
   if (value.size > MAX_ANALYSIS_BYTES) return json(413, { ok: false, error: 'EEG analysis is limited to 12 MB per PDF/image. Upload a smaller export or split the study into smaller files.' });
-  const model = env.GOOGLE_MODEL || 'gemini-2.5-flash';
+  const model = await resolveGeminiModel(env);
   const data = await base64(await value.arrayBuffer());
   const prompt = analysisPrompt(filename);
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(env.GOOGLE_API_KEY)}`, {
