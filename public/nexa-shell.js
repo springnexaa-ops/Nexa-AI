@@ -41,7 +41,7 @@ input.onchange=async e=>{
   out.innerHTML='<div class="nxAnalysisState">Reading the uploaded file and preparing a file-specific answer…</div>';
   const fd=new FormData();
   fd.append('file',f);
-  fd.append('question','Review the uploaded file itself and tell me what this file shows. If it is an EEG, explain the EEG graph/report findings using EEG quality, background, abnormal slowing, epileptiform activity, events/seizures, activation/sleep, page/epoch observations, impression and limitations. Do not compare it with NCS, EMG, VEP, BAER/BERA or RNS unless those tests are actually part of the uploaded file.');
+  fd.append('question','Review the uploaded file itself and return a document-specific answer. First identify the modality from the uploaded file content. If it is NCS, return NCS report data including motor/sensory studies, nerves, sides, latencies, amplitudes, conduction velocities and F-waves when present. If it is EEG, return EEG findings. Apply the same document-specific rule to EMG, VEP, BAER/BERA and RNS. Do not assume or discuss another modality. Do not invent values or findings.');
   const headers={accept:'application/json'};
   const token=sessionStorage.getItem('nexa.user.session');
   if(token)headers.authorization='Bearer '+token;
