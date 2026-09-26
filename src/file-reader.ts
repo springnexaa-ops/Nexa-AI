@@ -204,7 +204,12 @@ STRICT DOCUMENT-GROUNDING RULES:
 }
 
 async function answerWithNexaMedical(env: any, question: string, documentType: string, documentText: string) {
-  const hits = await queryPrivateMedicalKnowledge(env, question || documentType, 6).catch(() => []);
+  const evidenceQuery = [
+    "document type: " + documentType,
+    "user question: " + (question || "review the uploaded report"),
+    "clinical terms from uploaded document: " + classificationText(documentText).slice(0, 6000)
+  ].join("\n");
+  const hits = await queryPrivateMedicalKnowledge(env, evidenceQuery, 6).catch(() => []);
   const evidence = hits.length
     ? hits.map((h: any, i: number) => "[P" + (i + 1) + "] " + h.text).join("\n\n")
     : getMedicalInternalContext([]);
