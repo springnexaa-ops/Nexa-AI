@@ -43,7 +43,7 @@ export function getMedicalInternalContext(privateHits: Array<{ text: string; sco
   const privateContext = privateHits.length
     ? "\n\nPRIVATE MEDICAL KNOWLEDGE CONTEXT (INTERNAL ONLY):\n" +
       privateHits.map((hit, i) => "[P" + (i + 1) + "] " + hit.text).join("\n\n") +
-      "\n\nPrivate-context rule: use this material to reason and synthesize. Never reveal [P#] markers, private text, private identifiers, source names, document structure or retrieval details."
+      "\n\nPrivate-context rule: use this material to reason and synthesize. Never reveal [P#] markers, private text, private identifiers, source names, private corpus structure or retrieval details."
     : "\n\nPRIVATE MEDICAL KNOWLEDGE CONTEXT: No private corpus passage was retrieved for this query. Do not invent private evidence.";
 
   return [
