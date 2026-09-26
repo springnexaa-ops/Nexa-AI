@@ -135,25 +135,7 @@ async function geminiEEG(env: any, value: File, filename: string, mimeType: stri
   });
 }
 
-export async function analyzeUploadedEEG(request: Request, env: any): Promise<Response> {
-  try {
-    if (request.method !== 'POST') return json(405, { ok: false, error: 'Method not allowed' });
-    const contentLength = Number(request.headers.get('content-length') || 0);
-    if (contentLength > MAX_BYTES) return json(413, { ok: false, error: 'File is larger than the 20 MB upload limit.' });
-    const form = await request.formData();
-    const value = form.get('file');
-    if (!(value instanceof File)) return json(400, { ok: false, error: 'Please upload an EEG PDF or image.' });
-    const filename = value.name || 'uploaded-eeg';
-    const extension = ext(filename);
-    const mimeType = value.type || (extension === 'pdf' ? 'application/pdf' : 'application/octet-stream');
-    const isPdf = extension === 'pdf' || mimeType === 'application/pdf';
-    const isImage = IMAGE_EXTENSIONS.has(extension) || mimeType.startsWith('image/');
-    if (!isPdf && !isImage) return json(415, { ok: false, error: 'EEG analysis accepts PDF or image files (PNG, JPG, WEBP, TIFF).' });
-    return geminiEEG(env, value, filename, isPdf ? 'application/pdf' : mimeType);
-  } catch (error) {
-    return json(500, { ok: false, error: 'EEG analysis failed.', detail: error instanceof Error ? error.message : 'Unknown EEG processing error' });
-  }
-}
+export { analyzeFile as analyzeUploadedEEG } from './file-reader';
 
 export async function inspectUploadedFile(request: Request): Promise<Response> {
   try {
