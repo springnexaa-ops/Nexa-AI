@@ -4,9 +4,10 @@ const AUTH='nexa.user.session';
 const history=[];
 let installed=false;
 
-async function postFile(endpoint,file){
+async function postFile(endpoint,file,question=''){
   const fd=new FormData();
   fd.append('file',file.blob,file.name||'uploaded-file');
+  if(question)fd.append('question',String(question).slice(0,4000));
   const headers={accept:'application/json'};
   const token=sessionStorage.getItem(AUTH);
   if(token)headers.authorization='Bearer '+token;
@@ -15,12 +16,8 @@ async function postFile(endpoint,file){
   if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.detail||('File analysis failed (HTTP '+r.status+')'));
   return d;
 }
-async function classifyAttachment(file){
-  return postFile('/v1/files/analyze',file);
-}
-async function analyzeSpecificDocument(file,documentType){
-  if(documentType==='EEG Report') return postFile('/v1/files/analyze-eeg',file);
-  return null;
+async function analyzeAttachment(file,question){
+  return postFile('/v1/files/analyze',file,question);
 }
 
 const wait=()=>{
@@ -36,15 +33,14 @@ const wait=()=>{
     const attachment=await window.NexaFiles?.getLast?.();
 
     if(attachment){
-      const d=await classifyAttachment(attachment);
-      const documentType=String(d?.documentType||d?.analysis||'Unknown Document').trim();
-      const specific=await analyzeSpecificDocument(attachment,documentType);
+      const d=await analyzeAttachment(attachment,text);
+      const documentType=String(d?.documentType||'Unknown Document').trim();
       window.NexaFiles?.clear?.();
 
       // Use the document-specific clinical workflow. EEG reports receive
       // the dedicated EEG structure; other document types return their
       // detected type until their dedicated analyzer is selected.
-      const answer=String(specific?.analysis||documentType).trim();
+      const answer=String(d?.analysis||documentType).trim();
 
       history.push(
         {role:'user',content:text||('Uploaded '+attachment.name)},
