@@ -84,6 +84,8 @@ function glow(){
 function enhance(){
   footer();glow();
   document.querySelectorAll('.nxSuggestion').forEach(card=>{
+    if(card.dataset.n5Bound==='1')return;
+    card.dataset.n5Bound='1';
     card.addEventListener('pointermove',e=>{
       if(window.matchMedia('(pointer:coarse)').matches)return;
       const r=card.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
