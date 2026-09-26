@@ -41,6 +41,44 @@ Return ONLY one label from the list above. No punctuation. No explanation. No ex
 Important classification rules: classify from the document's actual content, not the filename alone. If the document contains an NCS/NCV section, nerve conduction tables, CMAP/SNAP values, motor or sensory nerve studies, F-wave/H-reflex results, or wording such as "Nerve Conduction Studies", classify it as NCS Report even if the document mentions EEG as an exclusion, comparison, referral reason, or unrelated note. Likewise, classify EEG Report only when an actual EEG report/EEG recording interpretation is the primary document. Do not treat a sentence saying that EEG is absent as evidence that the document is an EEG report. If multiple terms appear, choose the actual primary report type represented by the document.`;
 }
 
+async function resolveGeminiModel(env: any): Promise<string> {
+  const apiKey = String(env.GOOGLE_API_KEY || '').trim();
+  if (!apiKey) throw new Error('GOOGLE_API_KEY is missing');
+
+  const preferred = String(env.GOOGLE_MODEL || '').trim();
+  const r = await fetch(
+    'https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(apiKey),
+    { method: 'GET', headers: { accept: 'application/json' }, signal: AbortSignal.timeout(8000) },
+  );
+  if (!r.ok) {
+    const detail = await r.text().catch(() => '');
+    throw new Error('Gemini model discovery failed (HTTP ' + r.status + '): ' + detail.slice(0, 180));
+  }
+
+  const data: any = await r.json();
+  const models = Array.isArray(data?.models) ? data.models : [];
+  const available = models
+    .filter((m: any) => Array.isArray(m?.supportedGenerationMethods) && m.supportedGenerationMethods.includes('generateContent'))
+    .map((m: any) => String(m?.name || '').replace(/^models\//, '').trim())
+    .filter(Boolean);
+
+  if (!available.length) throw new Error('No Gemini model available for generateContent on this API key.');
+
+  if (preferred && available.includes(preferred)) return preferred;
+
+  const rank = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes('flash') && n.includes('latest')) return 0;
+    if (n.includes('flash') && n.includes('2.5')) return 1;
+    if (n.includes('flash') && n.includes('2.0')) return 2;
+    if (n.includes('flash')) return 3;
+    if (n.includes('pro')) return 10;
+    return 20;
+  };
+  available.sort((x, y) => rank(x) - rank(y) || x.localeCompare(y));
+  return available[0];
+}
+
 function normalizeType(raw: string) {
   const value = raw.trim().replace(/^["'`]+|["'`]+$/g, '').replace(/\s+/g, ' ');
   const exact = [
@@ -87,7 +125,7 @@ export async function analyzeFile(request: Request, env: any): Promise<Response>
     if (!isPdf && !isImage) return json(415, { ok: false, error: 'Nexa Structured Reader accepts PDF or image files.' });
 
     const data = await toBase64(value);
-    const model = env.GOOGLE_MODEL || 'gemini-2.5-flash';
+    const model = await resolveGeminiModel(env);
     const body = {
       contents: [{
         role: 'user',
@@ -114,7 +152,15 @@ export async function analyzeFile(request: Request, env: any): Promise<Response>
       },
     );
 
-    if (!r.ok) return json(502, { ok: false, error: 'Structured document classifier failed (HTTP ' + r.status + ').' });
+    if (!r.ok) {
+      const detail = await r.text().catch(() => '');
+      return json(502, {
+        ok: false,
+        error: 'Structured document classifier failed (HTTP ' + r.status + ').',
+        detail: detail.slice(0, 500),
+        model,
+      });
+    }
 
     const d: any = await r.json();
     const raw = d?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('').trim() || '';
