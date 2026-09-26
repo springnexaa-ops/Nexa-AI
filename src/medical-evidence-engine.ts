@@ -1,4 +1,4 @@
-import { getMedicalBookContext } from "./medical-book-knowledge";
+import { getMedicalInternalContext } from "./medical-internal-knowledge";
 import { NEXA_MEDICAL_SOURCES, getMedicalSourceContext, type MedicalSource } from "./medical-open-source-registry";
 
 export type EvidenceRecord = {
@@ -126,7 +126,7 @@ export function buildMedicalEvidencePack(query: string, maxSources = 12): Medica
 
 export function getMedicalEvidenceContext(query: string): string {
   const pack = buildMedicalEvidencePack(query);
-  const book = getMedicalBookContext(query);
+  const book = getMedicalInternalContext([]);
   return [
     `NEXA MEDICAL EVIDENCE RAG v${pack.version}`,
     `Intent: ${pack.intent.join(", ")}`,
