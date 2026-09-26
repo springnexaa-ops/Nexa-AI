@@ -40,7 +40,7 @@ const wait=()=>{
       // Use the document-specific clinical workflow. EEG reports receive
       // the dedicated EEG structure; other document types return their
       // detected type until their dedicated analyzer is selected.
-      const answer=String(d?.analysis||documentType).trim();
+      const answer=String(d?.analysis||'No file-specific analysis was returned.').trim();
 
       history.push(
         {role:'user',content:text||('Uploaded '+attachment.name)},
@@ -65,7 +65,7 @@ const wait=()=>{
     const headers={'content-type':'application/json'};
     const token=sessionStorage.getItem(AUTH);
     if(token)headers.authorization='Bearer '+token;
-    const provider=medical?'auto':selected;
+    const provider=medical?'medical':selected;
 
     const r=await fetch('/v1/chat/completions',{
       method:'POST',
