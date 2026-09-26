@@ -4,26 +4,23 @@ const AUTH='nexa.user.session';
 const history=[];
 let installed=false;
 
-async function classifyAttachment(file){
+async function postFile(endpoint,file){
   const fd=new FormData();
   fd.append('file',file.blob,file.name||'uploaded-file');
   const headers={accept:'application/json'};
   const token=sessionStorage.getItem(AUTH);
   if(token)headers.authorization='Bearer '+token;
-
-  const r=await fetch('/v1/files/analyze',{
-    method:'POST',
-    headers,
-    body:fd,
-    cache:'no-store'
-  });
-
-  let d=null;
-  try{d=await r.json()}catch{}
-  if(!r.ok||d?.ok===false){
-    throw new Error(d?.error||d?.detail||('Document classification failed (HTTP '+r.status+')'));
-  }
+  const r=await fetch(endpoint,{method:'POST',headers,body:fd,cache:'no-store'});
+  let d=null;try{d=await r.json()}catch{}
+  if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.detail||('File analysis failed (HTTP '+r.status+')'));
   return d;
+}
+async function classifyAttachment(file){
+  return postFile('/v1/files/analyze',file);
+}
+async function analyzeSpecificDocument(file,documentType){
+  if(documentType==='EEG Report') return postFile('/v1/files/analyze-eeg',file);
+  return null;
 }
 
 const wait=()=>{
@@ -40,12 +37,14 @@ const wait=()=>{
 
     if(attachment){
       const d=await classifyAttachment(attachment);
+      const documentType=String(d?.documentType||d?.analysis||'Unknown Document').trim();
+      const specific=await analyzeSpecificDocument(attachment,documentType);
       window.NexaFiles?.clear?.();
 
-      // The chat response for an uploaded document is intentionally ONLY
-      // the detected document type. No summary, patient data, findings,
-      // measurements, diagnosis or other generated content is returned.
-      const answer=String(d?.documentType||d?.analysis||'Unknown Document').trim();
+      // Use the document-specific clinical workflow. EEG reports receive
+      // the dedicated EEG structure; other document types return their
+      // detected type until their dedicated analyzer is selected.
+      const answer=String(specific?.analysis||documentType).trim();
 
       history.push(
         {role:'user',content:text||('Uploaded '+attachment.name)},
