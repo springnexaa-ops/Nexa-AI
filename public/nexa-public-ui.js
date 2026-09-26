@@ -195,7 +195,63 @@ html,body{background:#08090d!important;color:var(--npx-text)!important}
  .nxTop{padding:0 12px!important}
 }
 @media(prefers-reduced-motion:reduce){.nxSuggestion{transition:none!important}}
-</style>`;
+
+/* Mobile workspace + low-power rendering: keep the compact navigation visible and avoid costly visual effects. */
+.nexaPublicWorkspace,.nexaPublicWorkspace *{scroll-behavior:auto!important}
+.nexaPublicWorkspace #nexaConsumer{contain:layout style}
+.nexaPublicWorkspace .nxSide{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.nexaPublicWorkspace .nxTop{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.nexaPublicWorkspace .nxComposer{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.nexaPublicWorkspace .nxWelcome:before{filter:none!important}
+.nexaPublicWorkspace *{animation-duration:0.001ms!important}
+@media(max-width:850px){
+ #nexaConsumer{grid-template-columns:82px minmax(0,1fr)!important}
+ .nxSide{display:flex!important;padding:10px 6px!important;overflow:hidden!important}
+ .nxBrand{justify-content:center!important;padding:3px 2px 12px!important}
+ .nxBrand img{width:34px!important;height:34px!important}
+ .nxBrand>div{display:none!important}
+ .nxNew{font-size:0!important;text-align:center!important;padding:9px 4px!important;min-height:38px!important}
+ .nxNew:first-letter{font-size:16px!important}
+ .nxNav{justify-content:center!important;gap:2px!important;padding:8px 3px!important;min-height:39px!important}
+ .nxNav i{font-size:14px!important;width:auto!important}
+ .nxNav span{font-size:7px!important;line-height:1.1!important;text-align:center!important;display:block!important;max-width:72px!important}
+ .nxLabel{font-size:6px!important;padding:11px 2px 5px!important;text-align:center!important}
+ .nxHistory{display:block!important}
+ .nxHist{font-size:7px!important;padding:6px 3px!important;line-height:1.15!important;white-space:normal!important;max-height:30px!important;overflow:hidden!important}
+ .nxBottom{font-size:0!important;text-align:center!important;padding:8px 2px!important}
+ .nxBottom b{font-size:0!important}.nxBottom b:before{content:"●";font-size:9px!important}
+ .nxTop{padding:0 9px!important;height:52px!important}
+ .nxTitle{font-size:10px!important}
+ .nxTitle small{font-size:6px!important}
+ .nxPage{padding:8px 9px 30px!important;min-height:calc(100dvh - 52px)!important}
+ .nxWelcome{min-height:calc(100dvh - 72px)!important;padding:2vh 4px 54px!important}
+ .nxHeroLogo{width:46px!important;height:46px!important;border-radius:14px!important}
+ .nxWelcome h1{font-size:clamp(27px,8vw,38px)!important;text-align:center!important}
+ .nxWelcome p{font-size:9px!important;line-height:1.45!important;text-align:center!important;max-width:330px!important}
+ .nxWelcome .eyebrow{font-size:7px!important}
+ .nxWelcome .subnote{font-size:7px!important}
+ .nxSuggestions{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important;margin:13px auto 9px!important}
+ .nxSuggestion{min-height:70px!important;padding:9px!important;border-radius:10px!important}
+ .nxSuggestion .sIcon{font-size:12px!important;margin-bottom:6px!important}
+ .nxSuggestion b{font-size:8px!important;margin-bottom:3px!important}
+ .nxSuggestion span{font-size:6.5px!important;line-height:1.25!important}
+ .nxComposerWrap{width:100%!important;padding-top:8px!important}
+ .nxComposer{border-radius:12px!important}
+ .nxComposer textarea{min-height:45px!important;padding:11px 11px 5px!important;font-size:10px!important}
+ .nxBar{padding:4px!important}
+ .nxTool,.nxSend{font-size:7px!important;padding:6px 7px!important}
+ .nxSend{min-width:54px!important}
+ .nxStatus{font-size:6.5px!important}
+ .npToolbar .npBtn{width:34px!important;height:34px!important}
+ .npToolbar{gap:3px!important;margin-left:3px!important}
+ .npCopyright{left:82px!important;font-size:6px!important;padding:5px 7px 3px!important}
+}
+@media(max-width:360px){
+ #nexaConsumer{grid-template-columns:70px minmax(0,1fr)!important}
+ .npCopyright{left:70px!important}
+ .nxSuggestions{grid-template-columns:1fr!important;max-width:280px!important}
+ .nxSuggestion{min-height:58px!important}
+}</style>`;
 function apply(){
  if(!document.getElementById('nexaPublicWorkspaceUI'))document.head.insertAdjacentHTML('beforeend',style);
  document.body.classList.add('nexaPublicWorkspace');
