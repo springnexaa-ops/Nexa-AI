@@ -120,5 +120,15 @@ async function authApi(request:Request,env:any,url:URL):Promise<Response|null>{
   }
   return null;
 }
-async function publicAssets(request:Request,env:any){const response=await worker.fetch(request,env);const url=new URL(request.url);const ct=response.headers.get('content-type')||'';if(!ct.includes('text/html')||url.pathname==='/admin.html'||url.pathname==='/auth.html'||url.pathname==='/trust.html'||url.pathname==='/architecture.html')return response;const html=await response.text();const sanitized=html.replace(/<a[^>]+href=["']\/admin\.html["'][^>]*>[\s\S]*?<\/a>/gi,'');let injected=sanitized.includes('/auth-widget.js')?sanitized:sanitized.replace('</body>','<script src="/auth-widget.js" defer></script></body>');if(!injected.includes('/auth-fetch.js'))injected=injected.replace('</body>','<script src="/auth-fetch.js" defer></script></body>');if(!injected.includes('/nexa-shell.js'))injected=injected.replace('</body>','<script src="/nexa-shell.js" defer></script></body>');if(!injected.includes('/file-upload-fix.js'))injected=injected.replace('</body>','<script src="/file-upload-fix.js" defer></script></body>');if(!injected.includes('/file-reader-ui.js'))injected=injected.replace('</body>','<script src="/file-reader-ui.js" defer></script></body>');const h=new Headers(response.headers);h.delete('content-length');h.set('cache-control','no-store');return new Response(injected,{status:response.status,statusText:response.statusText,headers:h})}
+async function publicAssets(request:Request,env:any){const response=await worker.fetch(request,env);const url=new URL(request.url);const ct=response.headers.get('content-type')||'';if(!ct.includes('text/html')||url.pathname==='/admin.html'||url.pathname==='/auth.html'||url.pathname==='/trust.html'||url.pathname==='/architecture.html')return response;const html=await response.text();const sanitized=html.replace(/<a[^>]+href=["']\/admin\.html["'][^>]*>[\s\S]*?<\/a>/gi,'');let injected=sanitized;
+for(const script of [
+  '/auth-widget.js',
+  '/auth-fetch.js',
+  '/nexa-shell.js',
+  '/file-upload-fix.js',
+  '/nexa-chat-bridge.js',
+  '/nexa-5d-ui.js'
+]){
+  if(!injected.includes(script)) injected=injected.replace('</body>',`<script src="${script}" defer></script></body>`);
+}const h=new Headers(response.headers);h.delete('content-length');h.set('cache-control','no-store');return new Response(injected,{status:response.status,statusText:response.statusText,headers:h})}
 export default{async fetch(request:Request,env:any):Promise<Response>{const url=new URL(request.url);if(request.method==='OPTIONS')return new Response(null,{status:204});const a=await authApi(request,env,url);if(a)return a;if(publicProtected(url.pathname)){const user=await userFromRequest(request,env);if(!user&&url.pathname==='/v1/chat/completions'){if(!consumeGuestChat(request))return json({error:'Guest limit reached. Sign in or register to continue.',code:'GUEST_LIMIT_REACHED',login:'/auth.html',remaining:0},401);const response=await worker.fetch(request,env);return guestResponseHeaders(response,guestRemaining(request))}if(!user)return json({error:'Authentication required',code:'AUTH_REQUIRED',login:'/auth.html'},401)}return publicAssets(request,env)}};
