@@ -2,6 +2,7 @@
 'use strict';
 if(['/auth.html','/admin.html','/trust.html','/architecture.html'].includes(location.pathname)) return;
 const style=`<style id="nexaPublicWorkspaceUI">
+.nexaPublicCopyright{position:fixed;left:255px;right:0;bottom:0;z-index:22;text-align:center;padding:7px 10px 5px;background:linear-gradient(transparent,rgba(8,9,13,.96) 55%);color:#4e515b;font-size:8px;letter-spacing:.05em;pointer-events:none}@media(max-width:850px){.nexaPublicCopyright{left:82px}}@media(max-width:360px){.nexaPublicCopyright{left:70px}}
 :root{
  --npx-bg:#08090d;--npx-rail:#0b0c11;--npx-surface:#101116;--npx-surface2:#15161d;
  --npx-line:rgba(255,255,255,.09);--npx-text:#f5f7fb;--npx-muted:#8f929d;
@@ -253,6 +254,10 @@ html,body{background:#08090d!important;color:var(--npx-text)!important}
  .nxSuggestion{min-height:58px!important}
 }</style>`;
 function apply(){
+ if(!document.getElementById('nexaPublicCopyright')){
+   const f=document.createElement('div');f.id='nexaPublicCopyright';f.className='nexaPublicCopyright';
+   f.textContent='© 2026 SPRINGNEXA PRIVATE LIMITED';document.body.appendChild(f);
+ }
  if(!document.getElementById('nexaPublicWorkspaceUI'))document.head.insertAdjacentHTML('beforeend',style);
  document.body.classList.add('nexaPublicWorkspace');
 }
