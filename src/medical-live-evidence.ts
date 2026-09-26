@@ -29,8 +29,26 @@ export class MedicalEvidenceDO extends DurableObject{
 }
 export type Env={AI:Ai;MEDICAL_EVIDENCE:DurableObjectNamespace<MedicalEvidenceDO>;[key:string]:any};
 async function embed(env:Env,texts:string[]):Promise<number[][]>{const result:any=await env.AI.run(EMBEDDING_MODEL,{text:texts});return(result?.data||result?.embeddings||[]).map((x:any)=>Array.isArray(x)?x:(x?.embedding||[]))}
-export async function queryLiveEvidence(env:Env,query:string,limit=8){const stub=env.MEDICAL_EVIDENCE.get(env.MEDICAL_EVIDENCE.idFromName("global")),e=await embed(env,[query]);return stub.search(e[0]||[],limit)}
-export async function queryPrivateMedicalKnowledge(env:Env,query:string,limit=6){const stub=env.MEDICAL_EVIDENCE.get(env.MEDICAL_EVIDENCE.idFromName("global")),e=await embed(env,[query]);return stub.searchPrivateKnowledge(e[0]||[],limit)}
+export async function queryMedicalEvidence(env:Env,query:string,limits:{public?:number;private?:number}={}) {
+  const stub=env.MEDICAL_EVIDENCE.get(env.MEDICAL_EVIDENCE.idFromName("global"));
+  // One embedding request feeds both stores. This removes duplicate embedding work
+  // from every medical chat request while keeping private/public evidence separate.
+  const e=await embed(env,[query]);
+  const vector=e[0]||[];
+  const [publicHits,privateHits]=await Promise.all([
+    stub.search(vector,Math.min(Math.max(limits.public||8,1),20)),
+    stub.searchPrivateKnowledge(vector,Math.min(Math.max(limits.private||6,1),20))
+  ]);
+  return {publicHits,privateHits};
+}
+export async function queryLiveEvidence(env:Env,query:string,limit=8){
+  const {publicHits}=await queryMedicalEvidence(env,query,{public:limit,private:1});
+  return publicHits;
+}
+export async function queryPrivateMedicalKnowledge(env:Env,query:string,limit=6){
+  const {privateHits}=await queryMedicalEvidence(env,query,{public:1,private:limit});
+  return privateHits;
+}
 export async function ingestPrivateMedicalKnowledge(env:Env,version:string,texts:string[]){const normalized=texts.flatMap((text)=>chunks(String(text||""))).filter(Boolean).slice(0,2000);if(!normalized.length)return{version,count:0,updatedAt:new Date().toISOString()};const vectors:number[][]=[];for(let i=0;i<normalized.length;i+=32)vectors.push(...await embed(env,normalized.slice(i,i+32)));const items=normalized.map((text,i)=>({id:"private:"+version+":"+i,text,embedding:vectors[i]||[]}));const stub=env.MEDICAL_EVIDENCE.get(env.MEDICAL_EVIDENCE.idFromName("global"));return stub.replacePrivateKnowledge(version,items)}
 export async function ingestSource(env:Env,source:LiveSource){const r=await fetch(source.url,{headers:{"user-agent":"Nexa-AI-Medical-Evidence/1.0"},redirect:"follow"});const raw=await r.text();if(!r.ok)return{id:source.id,changed:false,status:r.status,error:`HTTP ${r.status}`};const text=cleanText(raw),contentHash=await sha256(text),version=contentHash.slice(0,16),stub=env.MEDICAL_EVIDENCE.get(env.MEDICAL_EVIDENCE.idFromName("global")),existing=await stub.listSources(),old=existing.find((x:any)=>x.id===source.id) as any;if(old?.content_hash===contentHash){await stub.upsertSource(source,text,contentHash,version,[],r.status);return{id:source.id,changed:false,version}}const cs=chunks(text),vectors:number[][]=[];for(let i=0;i<cs.length;i+=32)vectors.push(...await embed(env,cs.slice(i,i+32)));return{id:source.id,...await stub.upsertSource(source,text,contentHash,version,vectors,r.status)}}
 export async function ingestAll(env:Env,sources:LiveSource[]){const results=[];for(const source of sources){try{results.push(await ingestSource(env,source))}catch(e){results.push({id:source.id,changed:false,error:e instanceof Error?e.message:"ingest_error"})}}return{updatedAt:new Date().toISOString(),results}}
