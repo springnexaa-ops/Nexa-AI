@@ -96,12 +96,12 @@ function normalizeType(raw: string) {
   if (match) return match;
 
   const upper = value.toUpperCase();
-  if (/\bNCS\\b|NERVE CONDUCTION|NCV/.test(upper)) return 'NCS Report';
-  if (/\bEEG\\b|ELECTROENCEPHALOGRAPH/.test(upper)) return 'EEG Report';
-  if (/\bEMG\\b|ELECTROMYOGRAPH/.test(upper)) return 'EMG Report';
-  if (/\bVEP\\b|VISUAL EVOKED/.test(upper)) return 'VEP Report';
-  if (/\bBAER\\b|\\bBERA\\b|BRAINSTEM AUDITORY/.test(upper)) return 'BAER/BERA Report';
-  if (/\bRNS\\b|REPETITIVE NERVE STIMULATION/.test(upper)) return 'RNS Report';
+  if (/\bNCS\b|NERVE CONDUCTION|NCV/.test(upper)) return 'NCS Report';
+  if (/\bEEG\b|ELECTROENCEPHALOGRAPH/.test(upper)) return 'EEG Report';
+  if (/\bEMG\b|ELECTROMYOGRAPH/.test(upper)) return 'EMG Report';
+  if (/\bVEP\b|VISUAL EVOKED/.test(upper)) return 'VEP Report';
+  if (/\bBAER\b|\bBERA\b|BRAINSTEM AUDITORY/.test(upper)) return 'BAER/BERA Report';
+  if (/\bRNS\b|REPETITIVE NERVE STIMULATION/.test(upper)) return 'RNS Report';
   return 'Unknown Document';
 }
 
