@@ -15,24 +15,14 @@ async function toBase64(file: File) {
   return btoa(binary);
 }
 
-function promptFor(name: string, kind: 'pdf' | 'image') {
-  return `You are Nexa AI Document & Image Reader. Analyze the uploaded ${kind} itself: ${name}.
-
-Read the available content carefully. Do not invent text, numbers, diagnoses, identities, measurements, findings, or missing pages. If something is unclear, unreadable, cropped, or absent, explicitly say so.
-
-For PDFs: summarize the document, identify important sections, extract key facts/tables when legible, and preserve dates, names, numbers and units accurately. For medical PDFs, provide an assistive summary and clearly separate observed/documented information from interpretation; do not diagnose or prescribe.
-For images: describe what is visibly present, read legible text, identify charts/tables/diagrams, and explain relevant visual information. For medical images or reports, provide only assistive interpretation and recommend qualified professional review for clinical decisions.
-
-Return concise structured output with these headings:
-DOCUMENT / IMAGE TYPE
-KEY CONTENT
-IMPORTANT DETAILS
-TEXT / DATA READ
-MEDICAL OR TECHNICAL FINDINGS (if applicable)
-SUMMARY
-LIMITATIONS
-
-Be fast, factual and concise. Never claim certainty where the source is unclear.`;
+function promptFor(name: string, kind: 'pdf' | 'image', question = '') {
+  const questionBlock = question.trim() ? '\nUser requested task: ' + question.trim().slice(0, 3000) + '\nAnswer that task using the uploaded file itself.' : '';
+  return 'You are Nexa AI Document & Image Reader. Analyze the uploaded ' + kind + ' itself: ' + name + '.\n\n' +
+    'Read the available content carefully. Do not invent text, numbers, diagnoses, identities, measurements, findings, or missing pages. If something is unclear, unreadable, cropped, or absent, explicitly say so.\n\n' +
+    'For PDFs: summarize the document, identify important sections, extract key facts/tables when legible, and preserve dates, names, numbers and units accurately. For medical PDFs, provide an assistive summary and clearly separate observed/documented information from interpretation; do not diagnose or prescribe.\n' +
+    'For images: describe what is visibly present, read legible text, identify charts/tables/diagrams, and explain relevant visual information. For medical images or reports, provide only assistive interpretation and recommend qualified professional review for clinical decisions.\n\n' +
+    'Return concise structured output with these headings:\nDOCUMENT / IMAGE TYPE\nKEY CONTENT\nIMPORTANT DETAILS\nTEXT / DATA READ\nMEDICAL OR TECHNICAL FINDINGS (if applicable)\nSUMMARY\nLIMITATIONS\n\n' +
+    'Be fast, factual and concise. Never claim certainty where the source is unclear.' + questionBlock;
 }
 
 export async function analyzeFile(request: Request, env: any): Promise<Response> {
@@ -44,6 +34,7 @@ export async function analyzeFile(request: Request, env: any): Promise<Response>
 
     const form = await request.formData();
     const value = form.get('file');
+    const question = typeof form.get('question') === 'string' ? String(form.get('question')) : '';
     if (!(value instanceof File)) return json(400, { ok: false, error: 'Please upload a PDF or image.' });
     if (value.size > MAX_BYTES) return json(413, { ok: false, error: 'File exceeds the 20 MB limit.' });
 
@@ -57,24 +48,24 @@ export async function analyzeFile(request: Request, env: any): Promise<Response>
     const model = env.GOOGLE_MODEL || 'gemini-2.5-flash';
     const body = {
       contents: [{ role: 'user', parts: [
-        { text: promptFor(name, isPdf ? 'pdf' : 'image') },
+        { text: promptFor(name, isPdf ? 'pdf' : 'image', question) },
         { inline_data: { mime_type: isPdf ? 'application/pdf' : mime, data } },
       ] }],
       generationConfig: { temperature: 0.1, maxOutputTokens: MAX_OUTPUT_TOKENS },
     };
 
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(env.GOOGLE_API_KEY)}`, {
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(env.GOOGLE_API_KEY), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(18000),
     });
-    if (!r.ok) return json(502, { ok: false, error: `Nexa Reader provider failed (HTTP ${r.status}).` });
+    if (!r.ok) return json(502, { ok: false, error: 'Nexa Reader provider failed (HTTP ' + r.status + ').' });
     const d: any = await r.json();
     const analysis = d?.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('').trim();
     if (!analysis) return json(502, { ok: false, error: 'Nexa Reader received no readable result.' });
 
-    return json(200, { ok: true, analysis, file: { name, size: value.size, mimeType: isPdf ? 'application/pdf' : mime }, provider: 'google', model, engine: 'Nexa Document & Image Reader 1.0', disclaimer: 'Assistive reading only. Verify important information against the original document/image and obtain qualified clinical review for medical decisions.' });
+    return json(200, { ok: true, analysis, file: { name, size: value.size, mimeType: isPdf ? 'application/pdf' : mime }, provider: 'google', model, engine: 'Nexa Document & Image Reader 1.1', disclaimer: 'Assistive reading only. Verify important information against the original document/image and obtain qualified clinical review for medical decisions.' });
   } catch (error) {
     return json(500, { ok: false, error: 'Nexa Reader failed.', detail: error instanceof Error ? error.message : 'Unknown reader error' });
   }
