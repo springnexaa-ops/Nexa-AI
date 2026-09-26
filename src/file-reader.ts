@@ -4,35 +4,42 @@ import { getMedicalInternalContext } from "./medical-internal-knowledge";
 const MAX_BYTES = 20 * 1024 * 1024;
 const MAX_TEXT = 140_000;
 
-function normalizeSourceText(text: string) {
+function normalizeDocumentText(text: string) {
   return String(text || "")
-    .replace(/\\u0000/g, " ")
-    .replace(/\\r/g, " ")
-    .replace(/\\n/g, " ")
-    .replace(/\\\\([nrt])/g, " ")
-    .replace(/\\s+/g, " ")
+    .replace(/\u0000/g, " ")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
     .trim()
     .slice(0, MAX_TEXT);
+}
+
+function classificationText(text: string) {
+  return normalizeDocumentText(text).replace(/\s+/g, " ").toUpperCase();
+}
+
+async function sha256Bytes(bytes: Uint8Array) {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, "0")).join("");
 }
 
 async function extractRawPdfText(file: File) {
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
-    // Fallback only: recover readable literal strings from the PDF byte stream.
-    // This is deliberately used for modality identification, not clinical interpretation.
     const raw = new TextDecoder("latin1").decode(bytes);
     const strings: string[] = [];
+    // PDF literal strings are only a fallback classifier signal. Clinical analysis
+    // always uses the complete toMarkdown result.
     const re = /\\((?:\\\\|\\\(|\\\)|[^)]){2,500})\\)/g;
     let m: RegExpExecArray | null;
-    while ((m = re.exec(raw)) && strings.length < 500) {
+    while ((m = re.exec(raw)) && strings.length < 800) {
       strings.push(m[1].replace(/\\([\\()])/g, "$1").replace(/\\[nrt]/g, " "));
     }
-    return normalizeSourceText(strings.join(" "));
+    return normalizeDocumentText(strings.join("\n"));
   } catch {
     return "";
   }
 }
-
 
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
@@ -42,48 +49,51 @@ function json(status: number, body: Record<string, unknown>) {
 }
 
 function normalizeType(text: string) {
-  const upper = normalizeSourceText(text).toUpperCase();
+  const upper = classificationText(text);
 
-  // Strong modality anchors first. A report with MNC/SNC/F-wave tables is NCS
-  // even if its referral/history mentions another modality.
+  // Deterministic, high-signal modality anchors. These are evaluated before
+  // generic abbreviations so an NCS table cannot be overridden by an incidental
+  // "EEG" mention in history/referral text.
   const strong: Array<[string, RegExp[]]> = [
     ["NCS Report", [
-      /MNC STUDIES/, /SNC STUDIES/, /F[- ]WAVE STUDIES/,
-      /NERVE CONDUCTION STUDY/, /NERVE CONDUCTION/,
-      /STIM SITE.*LAT.*AMP.*AREA.*CV/,
-      /CMAP.*SNAP/, /MOTOR NERVE.*SENSORY NERVE/
+      /MNC\s+STUDIES/, /SNC\s+STUDIES/, /F[- ]WAVE\s+STUDIES/,
+      /NERVE\s+CONDUCTION\s+STUDY/, /NERVE\s+CONDUCTION/,
+      /STIM\s+SITE.*LAT.*AMP.*(?:CV|VELOCITY)/,
+      /CMAP.*SNAP/, /MOTOR\s+NERVE.*SENSORY\s+NERVE/
     ]],
     ["EMG Report", [
-      /NEEDLE EMG/, /ELECTROMYOGRAPHY/, /MOTOR UNIT POTENTIAL/,
-      /MUAP/, /RECRUITMENT/, /FIBRILLATION POTENTIAL/, /POSITIVE SHARP WAVE/
+      /NEEDLE\s+EMG/, /ELECTROMYOGRAPHY/, /MOTOR\s+UNIT\s+POTENTIAL/,
+      /MUAP/, /RECRUITMENT/, /FIBRILLATION\s+POTENTIAL/, /POSITIVE\s+SHARP\s+WAVE/
     ]],
     ["EEG Report", [
-      /ELECTROENCEPHALOGRAM/, /ELECTROENCEPHALOGRAPHY/, /EEG RECORDING/,
-      /POSTERIOR DOMINANT RHYTHM/, /PDR/, /EPILEPTIFORM ACTIVITY/,
+      /ELECTROENCEPHALOGRAM/, /ELECTROENCEPHALOGRAPHY/, /EEG\s+RECORDING/,
+      /POSTERIOR\s+DOMINANT\s+RHYTHM/, /PDR/, /EPILEPTIFORM\s+ACTIVITY/,
       /SPIKE[- ]AND[- ]WAVE/, /MONTAGE.*EEG/
     ]],
-    ["VEP Report", [/VISUAL EVOKED POTENTIAL/, /\bVEP\b/, /P100 LATENCY/]],
-    ["BAER/BERA Report", [/BRAINSTEM AUDITORY EVOKED/, /\bBAER\b/, /\bBERA\b/]],
-    ["RNS Report", [/REPETITIVE NERVE STIMULATION/, /\bRNS\b/, /DECREMENT.*CMAP/, /INCREMENT.*CMAP/]]
+    ["VEP Report", [/VISUAL\s+EVOKED\s+POTENTIAL/, /\bVEP\b/, /P100\s+LATENCY/]],
+    ["BAER/BERA Report", [/BRAINSTEM\s+AUDITORY\s+EVOKED/, /\bBAER\b/, /\bBERA\b/]],
+    ["RNS Report", [/REPETITIVE\s+NERVE\s+STIMULATION/, /\bRNS\b/, /DECREMENT.*CMAP/, /INCREMENT.*CMAP/]]
   ];
+
   for (const [type, patterns] of strong) {
     if (patterns.some(pattern => pattern.test(upper))) return type;
   }
 
   const scored: Array<[string, RegExp[]]> = [
-    ["NCS Report", [/\bNCS\b/, /\bNCV\b/, /CMAP/, /SNAP/, /F[- ]?WAVE/, /H[- ]?REFLEX/, /CONDUCTION VELOCITY/, /DISTAL LATENCY/]],
-    ["EMG Report", [/\bEMG\b/, /ELECTROMYOGRAPH/, /MOTOR UNIT/]],
+    ["NCS Report", [/\bNCS\b/, /\bNCV\b/, /CMAP/, /SNAP/, /F[- ]?WAVE/, /H[- ]?REFLEX/, /CONDUCTION\s+VELOCITY/, /DISTAL\s+LATENCY/]],
+    ["EMG Report", [/\bEMG\b/, /ELECTROMYOGRAPH/, /MOTOR\s+UNIT/]],
     ["EEG Report", [/\bEEG\b/, /ELECTROENCEPHALOGRAPH/, /EPILEPTIFORM/]],
-    ["VEP Report", [/\bVEP\b/, /VISUAL EVOKED/]],
-    ["BAER/BERA Report", [/\bBAER\b/, /\bBERA\b/, /BRAINSTEM AUDITORY/]],
-    ["RNS Report", [/\bRNS\b/, /REPETITIVE NERVE STIMULATION/]]
+    ["VEP Report", [/\bVEP\b/, /VISUAL\s+EVOKED/]],
+    ["BAER/BERA Report", [/\bBAER\b/, /\bBERA\b/, /BRAINSTEM\s+AUDITORY/]],
+    ["RNS Report", [/\bRNS\b/, /REPETITIVE\s+NERVE\s+STIMULATION/]]
   ];
   const ranked = scored.map(([type, patterns]) => ({
-    type, score: patterns.reduce((n, p) => n + (p.test(upper) ? 1 : 0), 0)
-  })).sort((a,b) => b.score-a.score);
+    type,
+    score: patterns.reduce((n, p) => n + (p.test(upper) ? 1 : 0), 0)
+  })).sort((a, b) => b.score - a.score);
   if (ranked[0]?.score >= 2) return ranked[0].type;
 
-  if (/DIAGNOSIS|IMPRESSION|CLINICAL|PATIENT|REPORT|LABORATORY|RADIOLOGY|ULTRASOUND|MRI|CT SCAN/.test(upper)) return "Other Medical Report";
+  if (/DIAGNOSIS|IMPRESSION|CLINICAL|PATIENT|REPORT|LABORATORY|RADIOLOGY|ULTRASOUND|MRI|CT\s+SCAN/.test(upper)) return "Other Medical Report";
   return "Unknown Document";
 }
 
@@ -95,7 +105,7 @@ async function convertDocument(env: any, file: File) {
   );
   const item = Array.isArray(result) ? result[0] : result;
   if (!item || item.format === "error") throw new Error(item?.error || "NEXA document conversion failed.");
-  return normalizeSourceText(String(item.data || ""));
+  return normalizeDocumentText(String(item.data || ""));
 }
 
 function medicalPrompt(documentType: string, question: string, documentText: string, evidence: string) {
@@ -234,8 +244,8 @@ export async function analyzeFile(request: Request, env: any): Promise<Response>
     const question = String(form.get("question") || "").trim().slice(0, 4000) || "Review the uploaded file itself and explain exactly what this document or graph shows.";
     const documentText = await convertDocument(env, value);
     const rawPdfText = isPdf ? await extractRawPdfText(value) : "";
-    const classificationText = [documentText, rawPdfText].filter(Boolean).join(" ");
-    const documentType = normalizeType(classificationText);
+    const classificationSource = [documentText, rawPdfText].filter(Boolean).join("\n");
+    const documentType = normalizeType(classificationSource);
 
     // Never let the generative model choose a medical modality when deterministic
     // extraction did not identify one. That was the source of the false EEG result.
@@ -249,10 +259,24 @@ export async function analyzeFile(request: Request, env: any): Promise<Response>
       });
     }
 
-    const result = await answerWithNexaMedical(env, question, documentType, documentText);
+    const fileBytes = new Uint8Array(await value.arrayBuffer());
+    const documentHash = await sha256Bytes(fileBytes);
+    const result = await answerWithNexaMedical(
+      env,
+      question,
+      documentType,
+      documentText
+    );
     return json(200, {
       ok: true,
       documentType,
+      documentHash,
+      extraction: {
+        engine: "Cloudflare Workers AI Markdown Conversion",
+        characters: documentText.length,
+        classification: "deterministic-document-content",
+        source: documentText.length ? "converted-document" : rawPdfText.length ? "raw-pdf-fallback" : "none"
+      },
       analysis: result.answer,
       file: { name, size: value.size, mimeType: isPdf ? "application/pdf" : mime },
       provider: "nexa-medical-resource",
