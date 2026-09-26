@@ -4,6 +4,36 @@ import { getMedicalInternalContext } from "./medical-internal-knowledge";
 const MAX_BYTES = 20 * 1024 * 1024;
 const MAX_TEXT = 140_000;
 
+function normalizeSourceText(text: string) {
+  return String(text || "")
+    .replace(/\\u0000/g, " ")
+    .replace(/\\r/g, " ")
+    .replace(/\\n/g, " ")
+    .replace(/\\\\([nrt])/g, " ")
+    .replace(/\\s+/g, " ")
+    .trim()
+    .slice(0, MAX_TEXT);
+}
+
+async function extractRawPdfText(file: File) {
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    // Fallback only: recover readable literal strings from the PDF byte stream.
+    // This is deliberately used for modality identification, not clinical interpretation.
+    const raw = new TextDecoder("latin1").decode(bytes);
+    const strings: string[] = [];
+    const re = /\\((?:\\\\|\\\(|\\\)|[^)]){2,500})\\)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(raw)) && strings.length < 500) {
+      strings.push(m[1].replace(/\\([\\()])/g, "$1").replace(/\\[nrt]/g, " "));
+    }
+    return normalizeSourceText(strings.join(" "));
+  } catch {
+    return "";
+  }
+}
+
+
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -12,36 +42,47 @@ function json(status: number, body: Record<string, unknown>) {
 }
 
 function normalizeType(text: string) {
-  const upper = text.toUpperCase();
+  const upper = normalizeSourceText(text).toUpperCase();
 
-  // Score the modalities instead of returning on the first keyword. This prevents
-  // an NCS report that mentions EEG/EMG in history or referrals from being misclassified.
-  const rules: Array<[string, RegExp[]]> = [
+  // Strong modality anchors first. A report with MNC/SNC/F-wave tables is NCS
+  // even if its referral/history mentions another modality.
+  const strong: Array<[string, RegExp[]]> = [
     ["NCS Report", [
-      /NERVE CONDUCTION STUDY/, /NERVE CONDUCTION/, /\bNCV\b/, /\bNCS\b/,
-      /CMAP/, /SNAP/, /F[- ]?WAVE/, /H[- ]?REFLEX/, /MOTOR NERVE/, /SENSORY NERVE/,
-      /DISTAL LATENCY/, /CONDUCTION VELOCITY/, /AMPLITUDE/
+      /MNC STUDIES/, /SNC STUDIES/, /F[- ]WAVE STUDIES/,
+      /NERVE CONDUCTION STUDY/, /NERVE CONDUCTION/,
+      /STIM SITE.*LAT.*AMP.*AREA.*CV/,
+      /CMAP.*SNAP/, /MOTOR NERVE.*SENSORY NERVE/
     ]],
     ["EMG Report", [
-      /NEEDLE EMG/, /ELECTROMYOGRAPH/, /MOTOR UNIT POTENTIAL/, /MUAP/,
-      /RECRUITMENT/, /FIBRILLATION POTENTIAL/, /POSITIVE SHARP WAVE/
+      /NEEDLE EMG/, /ELECTROMYOGRAPHY/, /MOTOR UNIT POTENTIAL/,
+      /MUAP/, /RECRUITMENT/, /FIBRILLATION POTENTIAL/, /POSITIVE SHARP WAVE/
     ]],
     ["EEG Report", [
-      /ELECTROENCEPHALOGRAM/, /ELECTROENCEPHALOGRAPH/, /EEG RECORDING/, /EEG REPORT/,
-      /POSTERIOR DOMINANT RHYTHM/, /PDR/, /EPILEPTIFORM ACTIVITY/, /SPIKE[- ]AND[- ]WAVE/,
-      /SHARP WAVE/, /MONTAGE/, /ELECTRODES/
+      /ELECTROENCEPHALOGRAM/, /ELECTROENCEPHALOGRAPHY/, /EEG RECORDING/,
+      /POSTERIOR DOMINANT RHYTHM/, /PDR/, /EPILEPTIFORM ACTIVITY/,
+      /SPIKE[- ]AND[- ]WAVE/, /MONTAGE.*EEG/
     ]],
-    ["VEP Report", [/VISUAL EVOKED POTENTIAL/, /\bVEP\b/, /P100/, /N75/, /P100 LATENCY/]],
-    ["BAER/BERA Report", [/BRAINSTEM AUDITORY EVOKED/, /\bBAER\b/, /\bBERA\b/, /WAVE I/, /WAVE III/, /WAVE V/]],
-    ["RNS Report", [/REPETITIVE NERVE STIMULATION/, /\bRNS\b/, /DECREMENT/, /INCREMENT/, /3 HZ/, /5 HZ/]]
+    ["VEP Report", [/VISUAL EVOKED POTENTIAL/, /\bVEP\b/, /P100 LATENCY/]],
+    ["BAER/BERA Report", [/BRAINSTEM AUDITORY EVOKED/, /\bBAER\b/, /\bBERA\b/]],
+    ["RNS Report", [/REPETITIVE NERVE STIMULATION/, /\bRNS\b/, /DECREMENT.*CMAP/, /INCREMENT.*CMAP/]]
   ];
+  for (const [type, patterns] of strong) {
+    if (patterns.some(pattern => pattern.test(upper))) return type;
+  }
 
-  const scored = rules.map(([type, patterns]) => ({
-    type,
-    score: patterns.reduce((sum, pattern) => sum + (pattern.test(upper) ? 1 : 0), 0)
-  })).sort((a, b) => b.score - a.score);
+  const scored: Array<[string, RegExp[]]> = [
+    ["NCS Report", [/\bNCS\b/, /\bNCV\b/, /CMAP/, /SNAP/, /F[- ]?WAVE/, /H[- ]?REFLEX/, /CONDUCTION VELOCITY/, /DISTAL LATENCY/]],
+    ["EMG Report", [/\bEMG\b/, /ELECTROMYOGRAPH/, /MOTOR UNIT/]],
+    ["EEG Report", [/\bEEG\b/, /ELECTROENCEPHALOGRAPH/, /EPILEPTIFORM/]],
+    ["VEP Report", [/\bVEP\b/, /VISUAL EVOKED/]],
+    ["BAER/BERA Report", [/\bBAER\b/, /\bBERA\b/, /BRAINSTEM AUDITORY/]],
+    ["RNS Report", [/\bRNS\b/, /REPETITIVE NERVE STIMULATION/]]
+  ];
+  const ranked = scored.map(([type, patterns]) => ({
+    type, score: patterns.reduce((n, p) => n + (p.test(upper) ? 1 : 0), 0)
+  })).sort((a,b) => b.score-a.score);
+  if (ranked[0]?.score >= 2) return ranked[0].type;
 
-  if (scored[0]?.score > 0) return scored[0].type;
   if (/DIAGNOSIS|IMPRESSION|CLINICAL|PATIENT|REPORT|LABORATORY|RADIOLOGY|ULTRASOUND|MRI|CT SCAN/.test(upper)) return "Other Medical Report";
   return "Unknown Document";
 }
@@ -54,7 +95,7 @@ async function convertDocument(env: any, file: File) {
   );
   const item = Array.isArray(result) ? result[0] : result;
   if (!item || item.format === "error") throw new Error(item?.error || "NEXA document conversion failed.");
-  return String(item.data || "").replace(/\u0000/g, "").trim().slice(0, MAX_TEXT);
+  return normalizeSourceText(String(item.data || ""));
 }
 
 function medicalPrompt(documentType: string, question: string, documentText: string, evidence: string) {
@@ -192,7 +233,21 @@ export async function analyzeFile(request: Request, env: any): Promise<Response>
 
     const question = String(form.get("question") || "").trim().slice(0, 4000) || "Review the uploaded file itself and explain exactly what this document or graph shows.";
     const documentText = await convertDocument(env, value);
-    const documentType = normalizeType(documentText);
+    const rawPdfText = isPdf ? await extractRawPdfText(value) : "";
+    const classificationText = [documentText, rawPdfText].filter(Boolean).join(" ");
+    const documentType = normalizeType(classificationText);
+
+    // Never let the generative model choose a medical modality when deterministic
+    // extraction did not identify one. That was the source of the false EEG result.
+    if (documentType === "Unknown Document") {
+      return json(422, {
+        ok: false,
+        error: "Nexa could not reliably identify the uploaded document type from the file itself.",
+        documentType: "Unknown Document",
+        instruction: "Do not guess the modality. Re-upload a clearer PDF or image.",
+        file: { name, size: value.size, mimeType: isPdf ? "application/pdf" : mime },
+      });
+    }
 
     const result = await answerWithNexaMedical(env, question, documentType, documentText);
     return json(200, {
