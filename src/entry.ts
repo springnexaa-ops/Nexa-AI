@@ -1,7 +1,7 @@
 // @ts-nocheck
 import worker from "./index-v3";
 import { UserStoreDO } from "./user-store";
-import { MedicalEvidenceDO, queryLiveEvidence, queryPrivateMedicalKnowledge, ingestPrivateMedicalKnowledge, ingestAll, buildMedicalAudit } from "./medical-live-evidence";
+import { MedicalEvidenceDO, queryLiveEvidence, ingestPrivateMedicalKnowledge, ingestAll, buildMedicalAudit } from "./medical-live-evidence";
 import { NEXA_MEDICAL_SOURCES } from "./medical-open-source-registry";
 import { analyzeUploadedEeg } from "./eeg-analysis";
 import { bedrockChat, bedrockConfigured, bedrockModel, bedrockRegion } from "./bedrock";
