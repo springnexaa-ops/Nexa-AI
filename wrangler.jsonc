@@ -15,10 +15,6 @@
     "UserStoreDO": { "type": "durable-object", "storage": "sqlite" },
     "MedicalEvidenceDO": { "type": "durable-object", "storage": "sqlite" }
   },
-  "vars": {
-    "AWS_REGION": "us-east-1",
-    "BEDROCK_MODEL_ID": "us.anthropic.claude-sonnet-4-6"
-  },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
