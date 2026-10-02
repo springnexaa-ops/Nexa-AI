@@ -10,12 +10,9 @@ export const VOICE_LANGUAGES: Record<VoiceLanguage, { name: string; nativeName: 
 
 export const VOICE_TTS_DEFAULT = "@cf/deepgram/aura-1";
 export const VOICE_STT_DEFAULT = "@cf/openai/whisper-large-v3-turbo";
-export const ELEVENLABS_MODEL_DEFAULT = "eleven_multilingual_v2";
-export const ELEVENLABS_VOICE_DEFAULT = "JBFqnCBsd6RMkjVDRZzb";
-
 const VOICE_SPEAKERS = new Set(["angus", "asteria", "arcas", "orion", "orpheus", "athena", "luna", "zeus", "perseus", "helios", "hera", "stella"]);
 
-type VoiceEnv = { AI: Ai; ELEVENLABS_API_KEY?: string; ELEVENLABS_VOICE_ID?: string; ELEVENLABS_MODEL?: string };
+type VoiceEnv = { AI: Ai };
 
 export function voiceSpeaker(value: unknown): string {
   const speaker = typeof value === "string" ? value.toLowerCase() : "asteria";
