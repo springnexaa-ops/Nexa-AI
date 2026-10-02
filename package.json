@@ -11,7 +11,8 @@
     "test:medical-audit": "tsx tests/medical-audit.test.ts",
     "test": "npm run typecheck && npm run check:public-js && npm run test:medical-audit",
     "cf:dry-run": "wrangler deploy --dry-run",
-    "production:gate": "npm test && npm run cf:dry-run"
+    "production:gate": "npm test && npm run cf:dry-run",
+    "security:cloudflare-only": "node scripts/cloudflare-only-gate.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
