@@ -2,8 +2,8 @@
 export const SECURITY_HEADERS: Record<string, string> = {
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
-  "referrer-policy": "strict-origin-when-cross-origin",
-  "permissions-policy": "camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=(), browsing-topics=()",
+  "referrer-policy": "no-referrer",
+  "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=(), browsing-topics=()",
   "cross-origin-opener-policy": "same-origin",
   "cross-origin-resource-policy": "same-origin",
   "cross-origin-embedder-policy": "credentialless",
@@ -11,9 +11,8 @@ export const SECURITY_HEADERS: Record<string, string> = {
   "x-permitted-cross-domain-policies": "none",
   "x-xss-protection": "0",
   "strict-transport-security": "max-age=31536000; includeSubDomains",
-  "content-security-policy": "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.pexels.com; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' https://api.elevenlabs.io https://generativelanguage.googleapis.com https://api.groq.com https://integrate.api.nvidia.com https://router.huggingface.co; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests",
+  "content-security-policy": "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: media-src 'self' blob:; font-src 'self' data:; connect-src 'self' self; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests",
   "content-security-policy-report-only": "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://images.pexels.com; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' https://api.elevenlabs.io https://generativelanguage.googleapis.com https://api.groq.com https://integrate.api.nvidia.com https://router.huggingface.co; worker-src 'self' blob:; manifest-src 'self'; report-to csp-endpoint",
-  "reporting-endpoints": 'csp-endpoint="https://nexa-ai.aljawahiragroup.workers.dev/v1/security/report"',
 };
 
 export function withSecurityHeaders(response: Response): Response {
