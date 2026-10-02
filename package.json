@@ -12,7 +12,8 @@
     "test": "npm run typecheck && npm run check:public-js && npm run test:medical-audit",
     "cf:dry-run": "wrangler deploy --dry-run",
     "production:gate": "npm test && npm run cf:dry-run",
-    "security:cloudflare-only": "node scripts/cloudflare-only-gate.mjs"
+    "security:cloudflare-only": "node scripts/cloudflare-only-gate.mjs",
+    "security:controls": "node scripts/security-control-gate.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
