@@ -9,6 +9,8 @@ const banned = [
   /amazonaws\.com\/model\//i,
   /\bbedrock\b/i,
   /DxGPT/i,
+  /api\\.groq\\.com|generativelanguage\\.googleapis\\.com|api\\.elevenlabs\\.io|integrate\\.api\\.nvidia\\.com|router\\.huggingface\\.co/i,
+  /index-v2\\.ts/i,
   /dxgpt\.app/i
 ];
 const allow = [/node_modules/];
