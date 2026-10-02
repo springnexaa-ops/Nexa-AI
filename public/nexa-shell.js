@@ -23,7 +23,6 @@ const css=`<style>
 @media(max-width:850px){#nexaConsumer{grid-template-columns:1fr}.nxSide{display:none}.nxPage{padding:20px 14px 32px}.nxTop{padding:0 15px}.nxSuggestions{grid-template-columns:repeat(2,1fr)}.nxWelcome{padding-top:6vh}.nxMsg.user{max-width:88%}}
 @media(max-width:560px){.nxMain{grid-template-rows:56px 1fr}.nxTop{height:56px}.nxTitle small{display:none}.nxModel{max-width:115px}.nxRight{gap:5px}.nxPage{padding:14px 10px 92px}.nxWelcome h1{font-size:36px}.nxHeroLogo{width:58px;height:58px}.nxSuggestions{grid-template-columns:1fr;gap:8px;margin-top:22px}.nxSuggestion{min-height:82px}.nxSuggestion .sIcon{display:inline;margin-right:8px}.nxComposerWrap{padding-top:16px}.nxTools .nxTool{font-size:9px}.nxSend{min-width:64px}.nxChat{min-height:calc(100dvh - 56px)}.nxMsg.user{max-width:92%}}
 @media(max-width:560px){
-@media(max-width:560px){
 html,body{
   height:auto!important;
   min-height:100%!important;
