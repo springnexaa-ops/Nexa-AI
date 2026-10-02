@@ -36,6 +36,7 @@ export class UserStoreDO extends DurableObject {
         expires_at INTEGER NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+      CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, count INTEGER NOT NULL, reset_at INTEGER NOT NULL);
     `);
   }
 
@@ -51,5 +52,16 @@ export class UserStoreDO extends DurableObject {
   async createSession(token: string, session: SessionRecord): Promise<void> { this.ctx.storage.sql.exec("INSERT OR REPLACE INTO sessions (token,user_id,expires_at) VALUES (?,?,?)", token, session.userId, session.expiresAt); }
   async getSession(token: string): Promise<SessionRecord | null> { const rows = this.ctx.storage.sql.exec("SELECT user_id,expires_at FROM sessions WHERE token = ?", token).toArray(); if (!rows.length) return null; const row = rows[0] as any; const session = { userId: String(row.user_id), expiresAt: Number(row.expires_at) }; if (session.expiresAt < Date.now()) { this.ctx.storage.sql.exec("DELETE FROM sessions WHERE token = ?", token); return null; } return session; }
   async deleteSession(token: string): Promise<void> { this.ctx.storage.sql.exec("DELETE FROM sessions WHERE token = ?", token); }
+  async consumeRateLimit(key:string,limit:number,windowMs:number):Promise<{allowed:boolean;remaining:number;retryAfter:number}> {
+    const now=Date.now();
+    const rows=this.ctx.storage.sql.exec("SELECT count,reset_at FROM rate_limits WHERE key=?",key).toArray() as any[];
+    let count=rows.length && Number(rows[0].reset_at)>now ? Number(rows[0].count) : 0;
+    const reset=rows.length && Number(rows[0].reset_at)>now ? Number(rows[0].reset_at) : now+windowMs;
+    if(count>=limit) return {allowed:false,remaining:0,retryAfter:Math.max(1,Math.ceil((reset-now)/1000))};
+    count++;
+    this.ctx.storage.sql.exec("INSERT OR REPLACE INTO rate_limits(key,count,reset_at) VALUES(?,?,?)",key,count,reset);
+    if(Math.random()<0.01) this.ctx.storage.sql.exec("DELETE FROM rate_limits WHERE reset_at<?",now);
+    return {allowed:true,remaining:Math.max(0,limit-count),retryAfter:0};
+  }
   async deleteSessionsForUser(userId: string): Promise<void> { this.ctx.storage.sql.exec("DELETE FROM sessions WHERE user_id = ?", userId); }
 }
