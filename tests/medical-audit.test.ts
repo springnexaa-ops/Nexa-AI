@@ -47,3 +47,18 @@ assert.match(entry, /protectedAdmin/);
 assert.match(entry, /ingestPrivateMedicalKnowledge/);
 
 console.log("private medical knowledge boundary tests: PASS");
+
+
+const live = read("src/medical-live-evidence.ts");
+const openRegistry = read("src/medical-open-source-registry.ts");
+const entrySource = read("src/entry.ts");
+assert.match(live, /medicalKnowledgeInventory/);
+assert.match(live, /NEXA-Medical-Knowledge-Inventory/);
+assert.match(live, /registeredSourceFamilies/);
+assert.match(live, /neurodiagnostics/);
+assert.match(openRegistry, /AANEM/);
+assert.match(openRegistry, /IFCN/);
+assert.match(openRegistry, /ILAE/);
+assert.match(entrySource, /\/v1\/admin\/medical\/inventory/);
+
+console.log("medical knowledge inventory tests: PASS");
