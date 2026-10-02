@@ -1,0 +1,27 @@
+plugins { id "com.android.application" }
+
+def nexaUrl = project.findProperty("nexaUrl") ?: System.getenv("NEXA_WEB_URL") ?: ""
+if (!nexaUrl) throw new GradleException("NEXA_WEB_URL/nexaUrl is required to build the APK")
+
+android {
+  namespace "in.springnexa.nexa"
+  compileSdk 35
+
+  defaultConfig {
+    applicationId "in.springnexa.nexa"
+    minSdk 24
+    targetSdk 35
+    versionCode 1
+    versionName "1.0.0"
+    buildConfigField "String", "NEXA_WEB_URL", "\"" + nexaUrl.replace("\\","\\\\").replace("\"","\\\"") + "\""
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled false
+      shrinkResources false
+    }
+  }
+
+  buildFeatures { buildConfig true }
+}
