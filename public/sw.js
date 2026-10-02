@@ -1,4 +1,4 @@
-const CACHE="nexa-ai-shell-v1";
+const CACHE="nexa-ai-shell-v2";
 const APP_SHELL=["/","/manifest.webmanifest","/springnexa-logo.svg"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
