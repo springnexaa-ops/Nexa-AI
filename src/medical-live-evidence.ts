@@ -44,9 +44,11 @@ export async function queryMedicalEvidence(env:Env,query:string,limits:{public?:
   ]);
   return {publicHits,privateHits};
 }
-export async function queryLiveEvidence(env:Env,query:string,limit=8){
-  const {publicHits}=await queryMedicalEvidence(env,query,{public:limit,private:1});
-  return publicHits;
+export async function queryLiveEvidence(env:Env,query:string,limit=5){
+  const stub=env.MEDICAL_EVIDENCE.get(env.MEDICAL_EVIDENCE.idFromName("global"));
+  const e=await embed(env,[query]);
+  const vector=e[0]||[];
+  return stub.search(vector,Math.min(Math.max(limit,1),12));
 }
 export async function queryPrivateMedicalKnowledge(env:Env,query:string,limit=6){
   const {privateHits}=await queryMedicalEvidence(env,query,{public:1,private:limit});
