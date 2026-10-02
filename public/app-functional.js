@@ -13,6 +13,20 @@ async function analyzeUploadedEEG(){
  const r=await fetch('/v1/files/analyze-eeg',{method:'POST',body:fd,cache:'no-store',headers:{accept:'application/json'}});
  const raw=await r.text();let d=null;try{d=JSON.parse(raw)}catch{}
  if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.detail||`EEG analysis failed (HTTP ${r.status})`);
+ window.NexaFiles.clear();
+ return d;
+}
+async function analyzeAttachment(question){
+ const saved=await window.NexaFiles?.getLast?.();
+ if(!saved?.blob)return null;
+ const fd=new FormData();fd.append('file',saved.blob,saved.name||'uploaded-file');
+ if(question)fd.append('question',String(question).slice(0,4000));
+ const token=sessionStorage.getItem('nexa.user.session');
+ const headers={accept:'application/json'};if(token)headers.authorization='Bearer '+token;
+ const r=await fetch('/v1/files/analyze',{method:'POST',headers,body:fd,cache:'no-store'});
+ const d=await r.json().catch(()=>({}));
+ if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.detail||`File analysis failed (HTTP ${r.status})`);
+ window.NexaFiles.clear();
  return d;
 }
 async function chat(text,mode='auto'){
@@ -21,9 +35,10 @@ async function chat(text,mode='auto'){
  const ta=$('textarea.composerInput')||$('.composer textarea')||$('textarea');if(ta)ta.value='';
  history.push({role:'user',content:text});
  try{
-  if(wantsEEG(text)){
-   const d=await analyzeUploadedEEG();
-   lastAnswer=d.analysis||'No EEG analysis was returned.';
+  const attachment=await window.NexaFiles?.getLast?.();
+  if(attachment){
+   const d=wantsEEG(text)?await analyzeUploadedEEG():await analyzeAttachment(text);
+   lastAnswer=String(d?.analysis||'No file-specific analysis was returned.').trim();
    history.push({role:'assistant',content:lastAnswer});
    return lastAnswer;
   }
