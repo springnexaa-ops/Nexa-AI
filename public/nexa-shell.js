@@ -23,58 +23,51 @@ const css=`<style>
 @media(max-width:850px){#nexaConsumer{grid-template-columns:1fr}.nxSide{display:none}.nxPage{padding:20px 14px 32px}.nxTop{padding:0 15px}.nxSuggestions{grid-template-columns:repeat(2,1fr)}.nxWelcome{padding-top:6vh}.nxMsg.user{max-width:88%}}
 @media(max-width:560px){.nxMain{grid-template-rows:56px 1fr}.nxTop{height:56px}.nxTitle small{display:none}.nxModel{max-width:115px}.nxRight{gap:5px}.nxPage{padding:14px 10px 92px}.nxWelcome h1{font-size:36px}.nxHeroLogo{width:58px;height:58px}.nxSuggestions{grid-template-columns:1fr;gap:8px;margin-top:22px}.nxSuggestion{min-height:82px}.nxSuggestion .sIcon{display:inline;margin-right:8px}.nxComposerWrap{padding-top:16px}.nxTools .nxTool{font-size:9px}.nxSend{min-width:64px}.nxChat{min-height:calc(100dvh - 56px)}.nxMsg.user{max-width:92%}}
 @media(max-width:560px){
-html,body{
-  height:auto!important;
-  min-height:100%!important;
-  overflow-x:hidden!important;
-  overflow-y:auto!important;
-  -webkit-overflow-scrolling:touch!important;
-  touch-action:pan-y!important;
+html,body{height:auto!important;min-height:100%!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;touch-action:pan-y!important;overscroll-behavior-y:auto!important}
+#nexaConsumer{height:auto!important;min-height:100dvh!important;display:block!important;overflow:visible!important;touch-action:pan-y!important}
+.nxMain{display:block!important;min-height:100dvh!important;height:auto!important;overflow:visible!important}
+.nxContent{overflow:visible!important;min-height:calc(100dvh - 56px);height:auto!important}
+.nxPage{min-height:auto!important;height:auto!important;overflow:visible!important}
+.nxChat{min-height:calc(100dvh - 56px)!important;height:auto!important;overflow:visible!important}
+.nxMessages{overflow:visible!important;height:auto!important;max-height:none!important;flex:none!important;touch-action:pan-y!important;padding-bottom:18px}
+.nxComposerWrap{position:relative!important;bottom:auto!important;z-index:30}
+.nxComposer{touch-action:pan-y!important}
+.nxComposer textarea{touch-action:pan-y!important;max-height:150px}
 }
-#nexaConsumer{
-  height:auto!important;
-  min-height:100dvh!important;
-  display:block!important;
-  overflow:visible!important;
-  touch-action:pan-y!important;
+function shell(){document.body.innerHTML=css+`<div id="nexaConsumer"><aside class="nxSide"><div class="nxBrand"><img src="/springnexa-logo.svg" alt="SpringNexa"><div><b>NEXA AI</b><small>SPRINGNEXA • AI PLATFORM</small></div></div><button class="nxNew" id="nxNew">＋&nbsp; New chat</button><button class="nxNav on" data-page="home"><i>⌂</i><span>Home</span></button><button class="nxNav" data-page="chat"><i>✦</i><span>Chat</span></button><button class="nxNav" data-page="medical"><i>✚</i><span>Healthcare</span></button><button class="nxNav" data-page="files"><i>□</i><span>Files & Documents</span></button><button class="nxNav" data-page="voice"><i>◉</i><span>Voice</span></button><div class="nxLabel">Recent chats</div><div class="nxHistory" id="nxHistory"></div><div class="nxBottom"><b>● Online</b> · Nexa AI secure workspace</div></aside><main class="nxMain"><header class="nxTop"><div class="nxTitle">Nexa AI<small>AI & healthcare intelligence</small></div><div class="nxRight"><select id="nxModel" class="nxModel" aria-label="AI mode"><option value="auto">Nexa Auto</option><option value="medical">Nexa Medical</option></select>${auth()?'<span class="nxUser">Signed in</span>':'<a class="nxLogin" href="/auth.html?next=%2F">Sign in</a>'}</div></header><section class="nxContent"><div class="nxPage" id="nxPage"></div></section></main></div>`}
+let messages=[];
+function historyUI(){const e=document.getElementById('nxHistory');if(!e)return;let h=[];try{h=JSON.parse(localStorage.getItem('nexa.history')||'[]')}catch{};e.innerHTML=h.length?h.map((x,i)=>`<button class="nxHist" data-history="${i}" title="${esc(x)}">${esc(x)}</button>`).join(''):'<div style="padding:7px 9px;color:#526b83;font-size:9px">Your recent prompts appear here.</div>';e.querySelectorAll('[data-history]').forEach(b=>b.onclick=()=>{const p=document.getElementById('nxPrompt');page('chat');setTimeout(()=>{const q=JSON.parse(localStorage.getItem('nexa.history')||'[]')[Number(b.dataset.history)];const input=document.getElementById('nxPrompt');if(input){input.value=q||'';input.focus()}},0)})}
+function gate(){if(auth()||document.getElementById('nxGate'))return;const d=document.createElement('div');d.id='nxGate';d.className='nxGate';d.innerHTML='<div class="nxGateBox"><small>PUBLIC ACCESS</small><h2>Continue with Nexa AI</h2><p>You have used your 10 free guest chats. Sign in or register to continue with your full workspace.</p><div class="nxBtns"><a class="nxPrimary" href="/auth.html?next=%2F">Sign in</a><a class="nxSecondary" href="/auth.html?mode=register&next=%2F">Create account</a></div></div>';document.body.appendChild(d)}
+function composer(){return `<div class="nxComposerWrap"><div class="nxComposer"><textarea id="nxPrompt" placeholder="Ask Nexa AI anything…" rows="1" aria-label="Message Nexa AI"></textarea><div class="nxBar"><div class="nxTools"><button class="nxTool" data-page="files">＋ File</button><button class="nxTool" data-page="voice">◉ Voice</button></div><button class="nxSend" id="nxSend">Send ↗</button></div></div><div class="nxStatus" id="nxStatus">Nexa AI is ready · Press Enter to send</div></div>`}
+function home(){document.getElementById('nxPage').innerHTML=`<div class="nxWelcome"><img class="nxHeroLogo" src="/springnexa-logo.svg" alt="Nexa AI"><div class="eyebrow">SPRINGNEXA AI PLATFORM</div><h1>How can I help you today?</h1><p>One friendly workspace for AI chat, healthcare questions, documents and voice — designed to make complex tasks simpler.</p><div class="subnote">Choose a prompt below or start typing your own.</div><div class="nxQuickLabel">Start with a task</div><div class="nxSuggestions"><button class="nxSuggestion" data-q="Explain this clearly in simple terms."><span class="sIcon">✦</span><b>Explain something</b><span>Turn a complex topic into an easy explanation.</span></button><button class="nxSuggestion" data-q="Help me plan this step by step."><span class="sIcon">⌁</span><b>Plan something</b><span>Break a goal into practical next steps.</span></button><button class="nxSuggestion" data-q="Summarize the following information clearly."><span class="sIcon">≡</span><b>Summarize</b><span>Find the important points quickly.</span></button><button class="nxSuggestion" data-q="Help me analyze this problem and give practical next steps."><span class="sIcon">◈</span><b>Analyze a problem</b><span>Explore the issue and organize useful actions.</span></button></div><div class="nxTrust"><span class="live">Nexa API ready</span><span>Healthcare workspace</span><span>File intelligence</span><span>Voice enabled</span></div>${composer()}</div>`;bindComposer();document.querySelectorAll('.nxSuggestion').forEach(b=>b.onclick=()=>{document.getElementById('nxPrompt').value=b.dataset.q;document.getElementById('nxPrompt').focus()})}
+function chat(){document.getElementById('nxPage').innerHTML=`<div class="nxChat"><div class="nxMessages" id="nxMessages"></div>${composer()}</div>`;render();bindComposer()}
+function render(){const b=document.getElementById('nxMessages');if(!b)return;b.innerHTML=messages.map(m=>`<div class="nxMsg ${m.role}"><div class="nxRole">${m.role==='user'?'YOU':'NEXA AI'}</div><div class="nxText">${esc(m.text)}</div></div>`).join('');b.scrollTop=b.scrollHeight}
+async function send(override){const p=document.getElementById('nxPrompt'),text=(override||p?.value||'').trim();if(!text)return;if(!auth()&&count()>=LIMIT){gate();return}if(p)p.value='';messages.push({role:'user',text});if(!document.getElementById('nxMessages'))chat();render();const b=document.getElementById('nxMessages');const wait=document.createElement('div');wait.className='nxMsg ai';wait.innerHTML='<div class="nxRole">NEXA AI</div><div class="nxText nxThinking">Thinking…</div>';b.appendChild(wait);b.scrollTop=b.scrollHeight;const started=performance.now(),status=document.getElementById('nxStatus');if(status)status.textContent='Generating your response…';try{const mode=document.getElementById('nxModel')?.value==='medical'?'medical':'auto';const answer=await window.NexaApp.chat(text,mode);wait.querySelector('.nxText').textContent=answer||'No response returned.';messages.push({role:'assistant',text:answer||'No response returned.'});if(!auth())localStorage.setItem(COUNT,String(count()+1));saveHistory(text);historyUI();if(status)status.textContent=`Ready · ${((performance.now()-started)/1000).toFixed(1)}s`;b.scrollTop=b.scrollHeight;if(!auth()&&count()>=LIMIT)gate()}catch(e){wait.querySelector('.nxText').textContent='Nexa AI could not complete this request. '+(e?.message||'Temporary service error');if(status)status.textContent='Ready'}}
+function bindComposer(){const p=document.getElementById('nxPrompt'),s=document.getElementById('nxSend');if(!p||!s)return;s.onclick=()=>send();p.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}};p.oninput=()=>{p.style.height='auto';p.style.height=Math.min(p.scrollHeight,180)+'px'};document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>page(b.dataset.page))}
+function simplePage(type){const titles={medical:'Healthcare',files:'Files & Documents',voice:'Voice'};let body='';if(type==='medical')body='<p>Ask a healthcare question in a dedicated workspace. Nexa Medical uses the configured medical knowledge layer where relevant. AI output should support, not replace, professional clinical judgment.</p><div class="nxField"><input id="nxQ" placeholder="Ask a healthcare question…"><button class="nxAction" id="nxAsk">Ask Nexa Medical</button></div>';if(type==='files')body='<p>Upload a document. Nexa will analyze the uploaded file itself and answer what it shows.</p><input id="nxFile" class="nxFile" type="file" accept=".pdf,image/*"><div id="nxOut" class="nxOutput">No file selected.</div>';if(type==='voice')body='<p>Use browser speech recognition to speak a request and send the recognized text to Nexa AI.</p><button class="nxAction" id="nxMic">◉ Start microphone</button><div id="nxVoiceOut" class="nxOutput">Microphone is idle.</div>';document.getElementById('nxPage').innerHTML=`<div class="nxPanel"><button class="nxBack" id="nxBack">← Back to chat</button><h2>${titles[type]}</h2>${body}</div>`;document.getElementById('nxBack').onclick=chat;if(type==='medical')document.getElementById('nxAsk').onclick=()=>{const q=document.getElementById('nxQ').value.trim();if(q){document.getElementById('nxModel').value='medical';chat();setTimeout(()=>send(q),0)}};if(type==='files'){
+const input=document.getElementById('nxFile'),out=document.getElementById('nxOut');
+input.onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  out.className='nxOutput nxFileAnalysis';
+  out.innerHTML='<div class="nxAnalysisState">Reading the uploaded file and preparing a file-specific answer…</div>';
+  const fd=new FormData();
+  fd.append('file',f);
+  fd.append('question','Review the uploaded file itself and return a document-specific answer. First identify the modality from the uploaded file content. If it is NCS, return NCS report data including motor/sensory studies, nerves, sides, latencies, amplitudes, conduction velocities and F-waves when present. If it is EEG, return EEG findings. Apply the same document-specific rule to EMG, VEP, BAER/BERA and RNS. Do not assume or discuss another modality. Do not invent values or findings.');
+  const headers={accept:'application/json'};
+  const token=sessionStorage.getItem('nexa.user.session');
+  if(token)headers.authorization='Bearer '+token;
+  try{
+    const r=await fetch('/v1/files/analyze',{method:'POST',headers,body:fd,cache:'no-store'});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.ok)throw new Error(d.error||d.detail||'NEXA document analysis failed.');
+    const type=String(d.documentType||'Unknown Document');
+    out.innerHTML='<div class="nxAnalysisHead"><b>'+esc(type)+'</b><span>'+esc(f.name)+'</span></div><article class="nxAnalysisText">'+esc(d.analysis||'No file-specific analysis was returned.')+'</article><div class="nxAnalysisDisclaimer">NEXA file analysis is assistive clinical decision support. Final clinical interpretation requires qualified professional review.</div>';
+  }catch(x){
+    out.innerHTML='<div class="nxAnalysisHead"><b>File analysis failed</b></div><div class="nxAnalysisError">'+esc(x.message||'Temporary service error.')+'</div>';
+  }
+};
 }
-.nxMain{
-  display:block!important;
-  min-height:100dvh!important;
-  height:auto!important;
-  overflow:visible!important;
-}
-.nxContent{
-  overflow:visible!important;
-  min-height:calc(100dvh - 56px);
-  height:auto!important;
-}
-.nxPage{
-  min-height:auto!important;
-  overflow:visible!important;
-}
-.nxChat{
-  min-height:calc(100dvh - 56px)!important;
-  height:auto!important;
-  overflow:visible!important;
-}
-.nxMessages{
-  overflow:visible!important;
-  height:auto!important;
-  max-height:none!important;
-  flex:none!important;
-  touch-action:pan-y!important;
-  padding-bottom:18px;
-}
-.nxComposerWrap{
-  position:relative!important;
-  bottom:auto!important;
-  z-index:30;
-}
-.nxComposer{
-  touch-action:pan-y!important;
-}
-.nxComposer textarea{
-  touch-action:pan-y!important;
-}
-}
+if(type==='voice')document.getElementById('nxMic').onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){document.getElementById('nxVoiceOut').textContent='Browser voice recognition is unavailable.';return}const r=new R();r.lang='en-IN';r.onresult=e=>{const q=e.results[0][0].transcript;document.getElementById('nxVoiceOut').textContent=q;chat();setTimeout(()=>send(q),0)};r.start();document.getElementById('nxVoiceOut').textContent='Listening…'}}
+function page(p){document.querySelectorAll('.nxNav').forEach(x=>x.classList.toggle('on',x.dataset.page===p));if(p==='home')home();else if(p==='chat')chat();else simplePage(p)}
+shell();historyUI();home();document.querySelectorAll('.nxNav').forEach(n=>n.onclick=()=>page(n.dataset.page));document.getElementById('nxNew').onclick=()=>{messages=[];window.NexaApp?.clearChat();chat()};
+})();
