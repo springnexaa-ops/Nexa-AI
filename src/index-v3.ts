@@ -1,4 +1,4 @@
-import worker from './index-v2';
+import worker from './core-worker';
 import { inspectUploadedFile, analyzeUploadedEEG } from './file-intelligence';
 import { analyzeFile } from './file-reader';
 
