@@ -9,7 +9,23 @@
 <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
 <title>Nexa AI | SpringNexa</title>
 <style>
-html,body{margin:0;min-height:100%;background:#04110c;color:#f4fff8;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}body{display:block;overflow:auto}#nexa-loader{min-height:100vh;width:100%;display:grid;place-items:center;text-align:center;background:linear-gradient(180deg,#73c7e8,#eaf9ff 72%,#eef7f4)}#nexa-loader .box{padding:28px}#nexa-loader img{width:48px;height:48px;border-radius:13px;margin-bottom:12px}#nexa-loader b{display:block;font-size:18px;color:#123040}#nexa-loader span{display:block;margin-top:7px;color:#496a79;font-size:12px}#nexa-loader i{display:block;width:20px;height:20px;border:2px solid #b6dcea;border-top-color:#3c9fc8;border-radius:50%;animation:spin .7s linear infinite;margin:16px auto 0}@keyframes spin{to{transform:rotate(360deg)}}
+:root{color-scheme:light dark}
+html,body{margin:0;min-height:100%;background:#f7f6f2;color:#252422;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+body{display:block;overflow:auto}
+#nexa-loader{min-height:100vh;width:100%;display:grid;place-items:center;text-align:center;background:#f7f6f2}
+#nexa-loader .box{width:min(420px,calc(100% - 40px));padding:32px 24px}
+#nexa-loader img{width:46px;height:46px;border-radius:14px;margin-bottom:18px}
+#nexa-loader b{display:block;font-family:Georgia,"Times New Roman",serif;font-size:24px;letter-spacing:-.02em;color:#262421}
+#nexa-loader span{display:block;margin-top:8px;color:#77736c;font-size:13px}
+#nexa-loader i{display:block;width:18px;height:18px;border:2px solid #ddd8cf;border-top-color:#c76b38;border-radius:50%;animation:spin .7s linear infinite;margin:18px auto 0}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-color-scheme:dark){
+html,body{background:#1f1e1b;color:#eeeae3}
+#nexa-loader{background:#1f1e1b}
+#nexa-loader b{color:#f2eee7}
+#nexa-loader span{color:#aaa49a}
+#nexa-loader i{border-color:#4b4741;border-top-color:#d8844d}
+}
 </style>
 </head>
 <body>
@@ -17,8 +33,8 @@ html,body{margin:0;min-height:100%;background:#04110c;color:#f4fff8;font-family:
 <script src="/app-functional.js?v=20261003-core" defer></script>
 <script src="/auth-fetch.js?v=jk-20260923-eeg-analysis" defer></script>
 <script src="/auth-widget.js?v=jk-20260923-eeg-analysis" defer></script>
-<script src="/nexa-shell.js?v=20261003-touchfix" defer></script>
-<script src="/day-night-toggle.js?v=20261002-daynight" defer></script>
+<script src="/nexa-shell.js?v=20261003-claude-ui" defer></script>
+<script src="/day-night-toggle.js?v=20261003-claude-ui" defer></script>
 <script src="/file-upload-fix.js?v=20260926-core" defer></script>
 <script src="/nexa-5d-ui.js?v=20260926-5d" defer></script>
 <script src="/sw-register.js" defer></script>
