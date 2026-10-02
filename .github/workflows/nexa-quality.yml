@@ -1,0 +1,36 @@
+name: NEXA AI Quality Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Cloudflare-only gate
+        run: npm run security:cloudflare-only
+
+      - name: Security controls
+        run: npm run security:controls
+
+      - name: Production gate
+        run: npm run production:gate
