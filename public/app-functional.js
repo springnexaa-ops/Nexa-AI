@@ -25,7 +25,7 @@ async function analyzeAttachment(question){
  const headers={accept:'application/json'};if(token)headers.authorization='Bearer '+token;
  const r=await fetch('/v1/files/analyze',{method:'POST',headers,body:fd,cache:'no-store'});
  const d=await r.json().catch(()=>({}));
- if(!r.ok||d?.ok===false)throw new Error(d?.error||d?.detail||`File analysis failed (HTTP ${r.status})`);
+ if(!r.ok||d?.ok===false)throw new Error([d?.error,d?.detail].filter(Boolean).join(' — ')||`File analysis failed (HTTP ${r.status})`);
  window.NexaFiles.clear();
  return d;
 }
