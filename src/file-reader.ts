@@ -19,8 +19,6 @@ function classificationText(text: string) {
 }
 
 async function sha256Bytes(bytes: Uint8Array) {
-  // Cloudflare Workers' TypeScript definitions require an ArrayBuffer here.
-  // Copy the bytes into a concrete ArrayBuffer to avoid ArrayBufferLike/SharedArrayBuffer typing issues.
   const buffer = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(buffer).set(bytes);
   const digest = await crypto.subtle.digest("SHA-256", buffer);
@@ -32,8 +30,6 @@ async function extractRawPdfText(file: File) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const raw = new TextDecoder("latin1").decode(bytes);
     const strings: string[] = [];
-    // PDF literal strings are only a fallback classifier signal. Clinical analysis
-    // always uses the complete toMarkdown result.
     const re = /\\((?:\\.|[^)]){2,500}\\)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(raw)) && strings.length < 800) {
@@ -54,10 +50,6 @@ function json(status: number, body: Record<string, unknown>) {
 
 function normalizeType(text: string) {
   const upper = classificationText(text);
-
-  // Deterministic, high-signal modality anchors. These are evaluated before
-  // generic abbreviations so an NCS table cannot be overridden by an incidental
-  // "EEG" mention in history/referral text.
   const strong: Array<[string, RegExp[]]> = [
     ["NCS Report", [
       /MNC\s+STUDIES/, /SNC\s+STUDIES/, /F[- ]WAVE\s+STUDIES/,
@@ -78,10 +70,7 @@ function normalizeType(text: string) {
     ["BAER/BERA Report", [/BRAINSTEM\s+AUDITORY\s+EVOKED/, /\bBAER\b/, /\bBERA\b/]],
     ["RNS Report", [/REPETITIVE\s+NERVE\s+STIMULATION/, /\bRNS\b/, /DECREMENT.*CMAP/, /INCREMENT.*CMAP/]]
   ];
-
-  for (const [type, patterns] of strong) {
-    if (patterns.some(pattern => pattern.test(upper))) return type;
-  }
+  for (const [type, patterns] of strong) if (patterns.some(pattern => pattern.test(upper))) return type;
 
   const scored: Array<[string, RegExp[]]> = [
     ["NCS Report", [/\bNCS\b/, /\bNCV\b/, /CMAP/, /SNAP/, /F[- ]?WAVE/, /H[- ]?REFLEX/, /CONDUCTION\s+VELOCITY/, /DISTAL\s+LATENCY/]],
@@ -96,63 +85,76 @@ function normalizeType(text: string) {
     score: patterns.reduce((n, p) => n + (p.test(upper) ? 1 : 0), 0)
   })).sort((a, b) => b.score - a.score);
   if (ranked[0]?.score >= 2) return ranked[0].type;
-
   if (/DIAGNOSIS|IMPRESSION|CLINICAL|PATIENT|REPORT|LABORATORY|RADIOLOGY|ULTRASOUND|MRI|CT\s+SCAN/.test(upper)) return "Other Medical Report";
   return "Unknown Document";
 }
 
-async function convertDocument(env: any, file: File) {
-  const input = {
-    name: file.name || "uploaded-document.pdf",
-    blob: new Blob([await file.arrayBuffer()], { type: file.type || "application/pdf" }),
-  };
+type ExtractionResult = {
+  text: string;
+  engine: string;
+  source: "converted-document" | "raw-pdf-fallback";
+};
 
-  // Workers AI Markdown Conversion is the primary document extraction path.
-  // Use the current binding API with conservative options so a provider-side
-  // option mismatch cannot make every PDF upload fail.
-  if (env.AI?.toMarkdown) {
-    const options = {
-      conversionOptions: {
-        output: { format: "text" },
-        pdf: { metadata: false },
-        image: { descriptionLanguage: "en" },
-      },
+function errorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  return typeof error === "string" ? error : "unknown conversion error";
+}
+
+async function convertDocument(env: any, file: File): Promise<ExtractionResult> {
+  const isPdf = (file.type || "application/pdf") === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  if (!isPdf) {
+    return {
+      text: normalizeDocumentText(await file.text().catch(() => "")),
+      engine: "native-text-reader",
+      source: "converted-document",
     };
-
-    let result: any;
-    try {
-      result = await env.AI.toMarkdown(input, options);
-    } catch (firstError) {
-      // Some Workers AI runtimes expose the transform handle explicitly.
-      try {
-        result = await env.AI.toMarkdown().transform(input, options);
-      } catch (secondError) {
-        throw new Error(
-          "NEXA PDF conversion service failed: " +
-          (secondError instanceof Error ? secondError.message :
-            firstError instanceof Error ? firstError.message : "unknown conversion error")
-        );
-      }
-    }
-
-    const item = Array.isArray(result) ? result[0] : result;
-    if (item?.format === "error") {
-      throw new Error(item.error || "NEXA PDF conversion returned an error.");
-    }
-
-    const text = normalizeDocumentText(String(item?.data || ""));
-    if (text) return text;
   }
 
-  // Last-resort extraction for text-based PDFs. This keeps ordinary reports
-  // usable even if the optional conversion binding is temporarily unavailable.
+  const bytes = await file.arrayBuffer();
+  const input = {
+    name: file.name || "uploaded-document.pdf",
+    blob: new Blob([bytes], { type: "application/pdf" }),
+  };
+
+  let conversionFailure = "";
+
+  if (env.AI?.toMarkdown) {
+    const attempts: Array<() => Promise<any>> = [
+      () => env.AI.toMarkdown(input),
+      () => env.AI.toMarkdown().transform(input),
+    ];
+    for (const attempt of attempts) {
+      try {
+        const result = await attempt();
+        const item = Array.isArray(result) ? result[0] : result;
+        if (item?.format === "error") {
+          conversionFailure = errorMessage(item.error || "Workers AI PDF conversion returned an error.");
+          continue;
+        }
+        const text = normalizeDocumentText(String(item?.data || item?.text || ""));
+        if (text) return { text, engine: "Cloudflare Workers AI Markdown Conversion", source: "converted-document" };
+        conversionFailure = "Workers AI PDF conversion returned no readable text.";
+      } catch (error) {
+        conversionFailure = errorMessage(error);
+      }
+    }
+  } else {
+    conversionFailure = "Workers AI Markdown Conversion is unavailable on this Worker.";
+  }
+
   const fallback = await extractRawPdfText(file);
-  if (fallback) return fallback;
+  if (fallback) {
+    return {
+      text: fallback,
+      engine: "NEXA PDF literal-string fallback",
+      source: "raw-pdf-fallback",
+    };
+  }
 
   throw new Error(
-    env.AI?.toMarkdown
-      ? "NEXA could not extract readable text from this PDF. If it is a scanned/image-only PDF, upload a clearer copy or an exported report PDF."
-      : "NEXA document conversion is not available on this Worker. Enable the Workers AI Markdown Conversion binding before analyzing PDFs."
+    conversionFailure
+      ? "NEXA PDF extraction failed: " + conversionFailure
+      : "NEXA could not extract readable text from this PDF."
   );
 }
 
@@ -214,9 +216,7 @@ Only report waveform features actually visible/described in the uploaded file.`,
 - IMPRESSION
 - LIMITATIONS`
   };
-
   const structure = structures[documentType] || "Answer using the exact data and findings contained in the uploaded document, organized around the user's question.";
-
   return `You are Nexa AI Medical performing document-grounded extraction and explanation.
 
 USER QUESTION:
@@ -278,6 +278,9 @@ async function answerWithNexaMedical(env: any, question: string, documentType: s
 }
 
 export async function analyzeFile(request: Request, env: any): Promise<Response> {
+  let fileName = "uploaded-file";
+  let fileSize = 0;
+  let fileMime = "";
   try {
     if (request.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
     const length = Number(request.headers.get("content-length") || 0);
@@ -286,52 +289,48 @@ export async function analyzeFile(request: Request, env: any): Promise<Response>
     const form = await request.formData();
     const value = form.get("file");
     if (!(value instanceof File)) return json(400, { ok: false, error: "Please upload a PDF or image." });
-    if (value.size > MAX_BYTES) return json(413, { ok: false, error: "File exceeds the 20 MB limit." });
+    fileName = value.name || "uploaded-file";
+    fileSize = value.size;
+    fileMime = value.type || "";
+    if (fileSize > MAX_BYTES) return json(413, { ok: false, error: "File exceeds the 20 MB limit." });
 
-    const name = value.name || "uploaded-file";
-    const mime = value.type || (name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "");
-    const isPdf = mime === "application/pdf" || name.toLowerCase().endsWith(".pdf");
+    const mime = fileMime || (fileName.toLowerCase().endsWith(".pdf") ? "application/pdf" : "");
+    const isPdf = mime === "application/pdf" || fileName.toLowerCase().endsWith(".pdf");
     const isImage = mime.startsWith("image/");
     if (!isPdf && !isImage) return json(415, { ok: false, error: "Nexa Structured Reader accepts PDF or image files." });
 
     const question = String(form.get("question") || "").trim().slice(0, 4000) || "Review the uploaded file itself and explain exactly what this document or graph shows.";
     const documentText = await convertDocument(env, value);
     const rawPdfText = isPdf ? await extractRawPdfText(value) : "";
-    const classificationSource = [documentText, rawPdfText].filter(Boolean).join("\n");
+    const classificationSource = [documentText.text, rawPdfText].filter(Boolean).join("\n");
     const documentType = normalizeType(classificationSource);
 
-    // Never let the generative model choose a medical modality when deterministic
-    // extraction did not identify one. That was the source of the false EEG result.
     if (documentType === "Unknown Document") {
       return json(422, {
         ok: false,
         error: "Nexa could not reliably identify the uploaded document type from the file itself.",
         documentType: "Unknown Document",
         instruction: "Do not guess the modality. Re-upload a clearer PDF or image.",
-        file: { name, size: value.size, mimeType: isPdf ? "application/pdf" : mime },
+        file: { name: fileName, size: fileSize, mimeType: isPdf ? "application/pdf" : mime },
       });
     }
 
     const fileBytes = new Uint8Array(await value.arrayBuffer());
     const documentHash = await sha256Bytes(fileBytes);
-    const result = await answerWithNexaMedical(
-      env,
-      question,
-      documentType,
-      documentText
-    );
+    const result = await answerWithNexaMedical(env, question, documentType, documentText.text);
+
     return json(200, {
       ok: true,
       documentType,
       documentHash,
       extraction: {
-        engine: "Cloudflare Workers AI Markdown Conversion",
-        characters: documentText.length,
+        engine: documentText.engine,
+        characters: documentText.text.length,
         classification: "deterministic-document-content",
-        source: documentText.length ? "converted-document" : rawPdfText.length ? "raw-pdf-fallback" : "none"
+        source: documentText.source,
       },
       analysis: result.answer,
-      file: { name, size: value.size, mimeType: isPdf ? "application/pdf" : mime },
+      file: { name: fileName, size: fileSize, mimeType: isPdf ? "application/pdf" : mime },
       provider: "nexa-medical-resource",
       model: result.model,
       engine: "NEXA Medical Document QA",
@@ -341,7 +340,11 @@ export async function analyzeFile(request: Request, env: any): Promise<Response>
     return json(502, {
       ok: false,
       error: "NEXA document analysis failed.",
-      detail: error instanceof Error ? error.message : "Unknown document processing error",
+      detail: errorMessage(error),
+      file: { name: fileName, size: fileSize, mimeType: fileMime || undefined },
+      diagnostics: {
+        stage: error instanceof Error && /PDF extraction|conversion/i.test(error.message) ? "pdf-extraction" : "document-analysis",
+      },
     });
   }
 }
