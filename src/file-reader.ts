@@ -102,14 +102,58 @@ function normalizeType(text: string) {
 }
 
 async function convertDocument(env: any, file: File) {
-  if (!env.AI?.toMarkdown) throw new Error("NEXA document conversion is not configured.");
-  const result: any = await env.AI.toMarkdown(
-    { name: file.name || "uploaded-document.pdf", blob: new Blob([await file.arrayBuffer()], { type: file.type || "application/pdf" }) },
-    { conversionOptions: { output: { format: "markdown" }, image: { descriptionLanguage: "en" }, pdf: { metadata: true } } },
+  const input = {
+    name: file.name || "uploaded-document.pdf",
+    blob: new Blob([await file.arrayBuffer()], { type: file.type || "application/pdf" }),
+  };
+
+  // Workers AI Markdown Conversion is the primary document extraction path.
+  // Use the current binding API with conservative options so a provider-side
+  // option mismatch cannot make every PDF upload fail.
+  if (env.AI?.toMarkdown) {
+    const options = {
+      conversionOptions: {
+        output: { format: "text" },
+        pdf: { metadata: false },
+        image: { descriptionLanguage: "en" },
+      },
+    };
+
+    let result: any;
+    try {
+      result = await env.AI.toMarkdown(input, options);
+    } catch (firstError) {
+      // Some Workers AI runtimes expose the transform handle explicitly.
+      try {
+        result = await env.AI.toMarkdown().transform(input, options);
+      } catch (secondError) {
+        throw new Error(
+          "NEXA PDF conversion service failed: " +
+          (secondError instanceof Error ? secondError.message :
+            firstError instanceof Error ? firstError.message : "unknown conversion error")
+        );
+      }
+    }
+
+    const item = Array.isArray(result) ? result[0] : result;
+    if (item?.format === "error") {
+      throw new Error(item.error || "NEXA PDF conversion returned an error.");
+    }
+
+    const text = normalizeDocumentText(String(item?.data || ""));
+    if (text) return text;
+  }
+
+  // Last-resort extraction for text-based PDFs. This keeps ordinary reports
+  // usable even if the optional conversion binding is temporarily unavailable.
+  const fallback = await extractRawPdfText(file);
+  if (fallback) return fallback;
+
+  throw new Error(
+    env.AI?.toMarkdown
+      ? "NEXA could not extract readable text from this PDF. If it is a scanned/image-only PDF, upload a clearer copy or an exported report PDF."
+      : "NEXA document conversion is not available on this Worker. Enable the Workers AI Markdown Conversion binding before analyzing PDFs."
   );
-  const item = Array.isArray(result) ? result[0] : result;
-  if (!item || item.format === "error") throw new Error(item?.error || "NEXA document conversion failed.");
-  return normalizeDocumentText(String(item.data || ""));
 }
 
 function medicalPrompt(documentType: string, question: string, documentText: string, evidence: string) {
