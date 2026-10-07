@@ -17,7 +17,7 @@ The project must not describe a Workers AI model as a NEXA-trained foundation mo
 1. Build a provenance-aware medical corpus.
 2. Create a governed dataset manifest format.
 3. Establish separate training/validation/test splits with leakage controls.
-4. Build medical and neurophysiology datasets first.
+4. Build governed medical datasets and integrate approved signal-derived datasets through controlled external preprocessing.
 5. Establish reproducible training configurations.
 6. Establish clinical evaluation and safety gates.
 7. Maintain model/data version lineage.
