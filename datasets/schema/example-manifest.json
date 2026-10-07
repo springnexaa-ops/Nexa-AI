@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "dataset_id": "example-medical-dataset",
+      "version": "0.1.0",
+      "modality": "medical-text",
+      "source": "REPLACE_WITH_APPROVED_SOURCE",
+      "license_or_permission": "REPLACE_WITH_LICENSE_OR_PERMISSION",
+      "provenance": "REPLACE_WITH_PROVENANCE",
+      "de_identified": true,
+      "annotation_status": "unreviewed",
+      "intended_use": "research",
+      "split": "train",
+      "checksum": "REPLACE_WITH_SHA256",
+      "created_at": "2026-10-07",
+      "owner": "SpringNexa"
+    }
+  ]
+}
