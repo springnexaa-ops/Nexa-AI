@@ -39,4 +39,4 @@ jobs:
         run: npm run pre-main-check
 
       - name: Validate foundation record tooling
-        run: node scripts/validate-nexa-foundation-record.mjs --help
+        run: node --check scripts/validate-nexa-foundation-record.mjs
