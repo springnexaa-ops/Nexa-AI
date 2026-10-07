@@ -3,7 +3,6 @@ const CACHE_TTL_SECONDS = 300;
 const CACHEABLE_PATHS = new Set([
   "/health",
   "/v1/models",
-  "/v1/bedrock/status",
   "/v1/voice/capabilities",
   "/v1/medical/specialties",
 ]);
