@@ -1,0 +1,21 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"NEXA Model Candidate",
+  "type":"object",
+  "required":["model_id","version","training_run_id","dataset_versions","code_commit","configuration","evaluation_report","safety_status","approval_status","artifact_checksum"],
+  "properties":{
+    "model_id":{"type":"string"},
+    "version":{"type":"string"},
+    "training_run_id":{"type":"string"},
+    "dataset_versions":{"type":"array","items":{"type":"string"},"minItems":1},
+    "code_commit":{"type":"string","pattern":"^[0-9a-f]{40}$"},
+    "configuration":{"type":"string"},
+    "tokenizer":{"type":["string","null"]},
+    "base_model":{"type":["string","null"]},
+    "evaluation_report":{"type":"string"},
+    "safety_status":{"enum":["not-evaluated","in-review","passed","failed"]},
+    "approval_status":{"enum":["draft","research-only","conditional","approved","rejected"]},
+    "artifact_checksum":{"type":"string","pattern":"^[0-9a-f]{64}$"}
+  },
+  "additionalProperties":false
+}
