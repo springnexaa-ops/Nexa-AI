@@ -1,0 +1,19 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"NEXA Controlled Release Manifest",
+  "type":"object",
+  "required":["release_id","model_id","model_version","artifact_sha256","training_run_id","evaluation_id","deployment_target","rollback_reference","authorized_approval"],
+  "properties":{
+    "release_id":{"type":"string","pattern":"^nexa-release-[a-z0-9.-]+$"},
+    "model_id":{"type":"string","pattern":"^nexa-[a-z0-9-]+$"},
+    "model_version":{"type":"string","pattern":"^v[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "artifact_sha256":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "training_run_id":{"type":"string","pattern":"^nexa-run-[a-z0-9.-]+$"},
+    "evaluation_id":{"type":"string","pattern":"^nexa-eval-[a-z0-9.-]+$"},
+    "deployment_target":{"type":"string","minLength":1},
+    "rollback_reference":{"type":"string","minLength":1},
+    "authorized_approval":{"type":"boolean"},
+    "verification_status":{"enum":["pending","passed","failed","rolled_back"]}
+  },
+  "additionalProperties":false
+}
