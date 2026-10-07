@@ -15,7 +15,11 @@
     "security:cloudflare-only": "node scripts/cloudflare-only-gate.mjs",
     "security:controls": "node scripts/security-control-gate.mjs",
     "pre-main-check": "node scripts/pre-main-check.mjs",
-    "setup:git-hooks": "git config core.hooksPath .githooks"
+    "setup:git-hooks": "git config core.hooksPath .githooks",
+    "foundation:manifest:validate": "node scripts/validate-nexa-foundation-manifest.mjs",
+    "foundation:manifest:create": "node scripts/create-nexa-dataset-manifest.mjs",
+    "foundation:training:validate": "node scripts/validate-nexa-training-job.mjs",
+    "foundation:record:validate": "node scripts/validate-nexa-foundation-record.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",

@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "task": "medical-domain-adaptation",
+  "status": "research",
+  "dataset_manifests": ["datasets/schema/example-manifest.json"],
+  "split_policy": "patient_or_source_grouped",
+  "max_sequence_length": 4096,
+  "seed": 20261007,
+  "evaluation_required": true,
+  "production_deployment": false
+}

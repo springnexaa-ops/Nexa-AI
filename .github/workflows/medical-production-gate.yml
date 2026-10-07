@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   validate:
-    name: TypeScript + UI + Medical + Cloudflare validation
+    name: TypeScript + UI + Medical + Foundation validation
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -37,3 +37,6 @@ jobs:
 
       - name: Mandatory pre-main validation
         run: npm run pre-main-check
+
+      - name: Validate foundation record tooling
+        run: node --check scripts/validate-nexa-foundation-record.mjs
