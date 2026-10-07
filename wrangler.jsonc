@@ -4,6 +4,10 @@
   "main": "src/entry.ts",
   "compatibility_date": "2026-09-15",
   "observability": { "enabled": true },
+  "routes": [
+    { "pattern": "ai.springnexa.in/*", "zone_name": "springnexa.in" }
+  ],
+  "workers_dev": false,
   "ai": { "binding": "AI" },
   "durable_objects": {
     "bindings": [
