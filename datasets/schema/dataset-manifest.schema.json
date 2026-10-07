@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NEXA Dataset Manifest",
+  "type": "object",
+  "required": ["items"],
+  "properties": {
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["dataset_id","version","modality","source","license_or_permission","provenance","de_identified","annotation_status","intended_use","split","checksum","created_at","owner"],
+        "properties": {
+          "dataset_id": {"type": "string"},
+          "version": {"type": "string"},
+          "modality": {"type": "string"},
+          "source": {"type": "string"},
+          "license_or_permission": {"type": "string"},
+          "provenance": {"type": "string"},
+          "de_identified": {"const": true},
+          "annotation_status": {"type": "string"},
+          "intended_use": {"type": "string"},
+          "split": {"enum": ["train","validation","test","evaluation-only"]},
+          "checksum": {"type": "string"},
+          "created_at": {"type": "string"},
+          "owner": {"type": "string"}
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
