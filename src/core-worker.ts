@@ -28,7 +28,7 @@ async function answer(env:any,msgs:Message[],provider="auto",requestedModel?:str
 }
 
 export default {async fetch(request:Request,env:any):Promise<Response>{const url=new URL(request.url);if(request.method==="OPTIONS")return cors(new Response(null,{status:204}));if(url.pathname==="/health"&&request.method==="GET")return cors(json({ok:true,service:BRAND,poweredBy:POWERED_BY,company:COMPANY,division:"IT Division",modes:["auto","medical","voice"]}));
-if(url.pathname==="/v1/models"&&request.method==="GET")return cors(json({brand:BRAND,poweredBy:POWERED_BY,company:COMPANY,models:[{id:"auto",name:"Nexa AI Auto",type:"general"},{id:"medical",name:"Nexa AI Medical",type:"medical"},{id:"voice",name:"Nexa Voice",type:"voice"}]})));
+if(url.pathname==="/v1/models"&&request.method==="GET")return cors(json({brand:BRAND,poweredBy:POWERED_BY,company:COMPANY,models:[{id:"auto",name:"Nexa AI Auto",type:"general"},{id:"medical",name:"Nexa AI Medical",type:"medical"},{id:"voice",name:"Nexa Voice",type:"voice"}]}));
 if(url.pathname==="/v1/medical/specialties"&&request.method==="GET")return cors(json({specialties:detectMedicalSpecialties(url.searchParams.get("q")||""),directory:"verified-only"}));
 if(url.pathname==="/v1/medical/providers"&&request.method==="GET")return cors(json(recommendMedicalProviders(url.searchParams.get("q")||"",url.searchParams.get("location")||"",(url.searchParams.get("type") as any)||undefined)));
 if(url.pathname==="/v1/voice/capabilities"&&request.method==="GET")return cors(json({brand:BRAND,product:"Nexa Voice",speechToText:true,textToSpeech:true,providers:{elevenlabs:!!env.ELEVENLABS_API_KEY,cloudflare:true},languages:["en","hi","ur","doi","ks","goj"],formats:["mp3","opus","wav"]}));

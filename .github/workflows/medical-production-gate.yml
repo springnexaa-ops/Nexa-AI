@@ -35,8 +35,5 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Cloudflare-only security gate
-        run: npm run security:cloudflare-only
-
-      - name: Production gate
-        run: npm run production:gate
+      - name: Mandatory pre-main validation
+        run: npm run pre-main-check

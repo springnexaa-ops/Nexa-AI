@@ -11,9 +11,11 @@
     "test:medical-audit": "tsx tests/medical-audit.test.ts",
     "test": "npm run typecheck && npm run check:public-js && npm run test:medical-audit",
     "cf:dry-run": "wrangler deploy --dry-run",
-    "production:gate": "npm test && npm run cf:dry-run",
+    "production:gate": "npm run pre-main-check",
     "security:cloudflare-only": "node scripts/cloudflare-only-gate.mjs",
-    "security:controls": "node scripts/security-control-gate.mjs"
+    "security:controls": "node scripts/security-control-gate.mjs",
+    "pre-main-check": "node scripts/pre-main-check.mjs",
+    "setup:git-hooks": "git config core.hooksPath .githooks"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",

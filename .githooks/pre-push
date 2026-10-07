@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+while read -r local_ref local_sha remote_ref remote_sha
+do
+  case "$remote_ref" in
+    refs/heads/main)
+      echo "NEXA main-branch push detected."
+      echo "Running mandatory pre-main validation..."
+      npm run pre-main-check
+      ;;
+  esac
+done
