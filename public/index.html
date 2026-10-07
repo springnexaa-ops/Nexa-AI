@@ -3,35 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Nexa AI by SpringNexa — accessible AI chat, healthcare assistance, files and voice.">
-<meta name="theme-color" content="#73c7e8"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><link rel="manifest" href="/manifest.webmanifest">
-<meta name="color-scheme" content="dark light">
+<meta name="description" content="Nexa AI by SpringNexa — intelligent chat, healthcare assistance, file analysis and voice.">
+<meta name="theme-color" content="#ffffff">
+<meta name="color-scheme" content="light dark">
 <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
+<link rel="manifest" href="/manifest.webmanifest">
 <title>Nexa AI | SpringNexa</title>
 <style>
-:root{color-scheme:light dark}
-html,body{margin:0;min-height:100%;background:#f4f7fb;color:#172033;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
-body{display:block;overflow:auto}
-#nexa-loader{min-height:100vh;width:100%;display:grid;place-items:center;text-align:center;background:radial-gradient(600px 360px at 20% 15%,rgba(66,133,244,.16),transparent 70%),linear-gradient(135deg,#f8fbff,#eef4fb)}
-#nexa-loader .box{width:min(420px,calc(100% - 40px));padding:32px 24px}
-#nexa-loader img{width:50px;height:50px;border-radius:16px;margin-bottom:18px;box-shadow:0 15px 40px rgba(66,133,244,.2)}
-#nexa-loader b{display:block;font-size:24px;letter-spacing:-.03em;color:#172033}
-#nexa-loader span{display:block;margin-top:8px;color:#718096;font-size:13px}
-#nexa-loader i{display:block;width:18px;height:18px;border:2px solid rgba(66,133,244,.18);border-top-color:#4285f4;border-radius:50%;animation:spin .7s linear infinite;margin:18px auto 0}
-@keyframes spin{to{transform:rotate(360deg)}}
-@media(prefers-color-scheme:dark){html,body{background:#08101d;color:#eef4ff}#nexa-loader{background:radial-gradient(600px 360px at 20% 15%,rgba(66,133,244,.18),transparent 70%),#08101d}#nexa-loader b{color:#eef4ff}#nexa-loader span{color:#9eabc0}}
+html,body{margin:0;min-height:100%;background:#fff;color:#202123;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#nexa-loader{min-height:100dvh;display:grid;place-items:center;background:#fff}
+#nexa-loader .box{text-align:center;color:#202123}
+#nexa-loader img{width:48px;height:48px;border-radius:50%;margin-bottom:14px}
+#nexa-loader b{display:block;font-size:20px;letter-spacing:-.02em}
+#nexa-loader span{display:block;margin-top:6px;color:#6b7280;font-size:13px}
 </style>
 </head>
 <body>
-<div id="nexa-loader"><div class="box"><img src="/springnexa-logo.svg" alt="SpringNexa"><b>NEXA AI</b><span>Opening your intelligent workspace…</span><i></i></div></div>
-<script src="/app-functional.js?v=20261003-core" defer></script>
-<script src="/auth-fetch.js?v=jk-20260923-eeg-analysis" defer></script>
-<script src="/auth-widget.js?v=jk-20260923-eeg-analysis" defer></script>
-<script src="/nexa-shell.js?v=20261003-final-ui" defer></script>
-<script src="/day-night-toggle.js?v=20261003-claude-ui" defer></script>
-<script src="/file-upload-fix.js?v=20260926-core" defer></script>
-<script src="/nexa-5d-ui.js?v=20260926-5d" defer></script>
-<script src="/nexa-liquid-glass.js?v=20261003-liquid-glass-gemini" defer></script>
-<script src="/sw-register.js" defer></script>
+<div id="nexa-loader"><div class="box"><img src="/springnexa-logo.svg" alt="SpringNexa"><b>Nexa AI</b><span>Loading…</span></div></div>
+<script src="/app-functional.js?v=20261007-gpt-ui" defer></script>
+<script src="/auth-fetch.js?v=20261007-gpt-ui" defer></script>
+<script src="/auth-widget.js?v=20261007-gpt-ui" defer></script>
+<script src="/nexa-shell.js?v=20261007-gpt-ui" defer></script>
+<script src="/sw-register.js?v=20261007-gpt-ui" defer></script>
 </body>
 </html>
