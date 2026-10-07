@@ -1,0 +1,17 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"NEXA Evaluation Report",
+  "type":"object",
+  "required":["evaluation_id","model_id","model_version","dataset_versions","metrics","safety","decision"],
+  "properties":{
+    "evaluation_id":{"type":"string"},
+    "model_id":{"type":"string"},
+    "model_version":{"type":"string"},
+    "dataset_versions":{"type":"array","items":{"type":"string"},"minItems":1},
+    "metrics":{"type":"object","additionalProperties":{"type":["number","string"]}},
+    "safety":{"type":"object","required":["status","privacy_checked","clinical_review_required"],"properties":{"status":{"enum":["not-started","in-review","passed","failed"]},"privacy_checked":{"type":"boolean"},"clinical_review_required":{"type":"boolean"}},"additionalProperties":false},
+    "decision":{"enum":["research-only","conditional","rejected","approved-for-promotion"]},
+    "notes":{"type":"string"}
+  },
+  "additionalProperties":false
+}
