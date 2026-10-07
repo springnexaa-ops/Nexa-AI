@@ -1,0 +1,20 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"NEXA Training Run Record",
+  "type":"object",
+  "required":["training_run_id","job_id","status","dataset_manifest","code_commit","training_config","evaluation_config","compute_profile"],
+  "properties":{
+    "training_run_id":{"type":"string","pattern":"^nexa-run-[a-z0-9.-]+$"},
+    "job_id":{"type":"string","pattern":"^nexa-job-[a-z0-9.-]+$"},
+    "status":{"enum":["queued","running","completed","failed"]},
+    "dataset_manifest":{"type":"object","required":["version","fingerprint"],"properties":{"version":{"type":"string"},"fingerprint":{"type":"string","pattern":"^[0-9a-f]{64}$"}},"additionalProperties":false},
+    "code_commit":{"type":"string","pattern":"^[0-9a-f]{40}$"},
+    "training_config":{"type":"object","required":["id","version"],"properties":{"id":{"type":"string"},"version":{"type":"string"}},"additionalProperties":false},
+    "evaluation_config":{"type":"string"},
+    "compute_profile":{"type":"string"},
+    "tokenizer":{"type":["string","null"]},
+    "base_model":{"type":["string","null"]},
+    "artifact_sha256":{"type":["string","null"],"pattern":"^[0-9a-f]{64}$"}
+  },
+  "additionalProperties":false
+}
