@@ -18,7 +18,8 @@
     "setup:git-hooks": "git config core.hooksPath .githooks",
     "foundation:manifest:validate": "node scripts/validate-nexa-foundation-manifest.mjs",
     "foundation:manifest:create": "node scripts/create-nexa-dataset-manifest.mjs",
-    "foundation:training:validate": "node scripts/validate-nexa-training-job.mjs"
+    "foundation:training:validate": "node scripts/validate-nexa-training-job.mjs",
+    "foundation:record:validate": "node scripts/validate-nexa-foundation-record.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "latest",
