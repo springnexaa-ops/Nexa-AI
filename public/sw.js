@@ -1,5 +1,5 @@
-const CACHE="nexa-ai-shell-v5-public-ui";
-const APP_SHELL=["/","/manifest.webmanifest","/springnexa-logo.svg","/nexa-shell.js?v=20261007-public-ui-v3"];
+const CACHE="nexa-ai-shell-v6-mobile-sidebar";
+const APP_SHELL=["/","/manifest.webmanifest","/springnexa-logo.svg","/nexa-shell.js?v=20261007-mobile-sidebar-v1"];
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(APP_SHELL)).then(()=>self.skipWaiting()));
 });
