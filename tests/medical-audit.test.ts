@@ -57,7 +57,7 @@ assert.match(evidenceStore, /replacePrivateKnowledge/);
 assert.match(evidenceStore, /searchPrivateKnowledge/);
 assert.match(evidenceStore, /ingestPrivateMedicalKnowledge/);
 
-assert.match(entry, /\\/v1\\/admin\\/medical\\/private-knowledge/);
+assert.match(entry, /\/v1\/admin\/medical\/private-knowledge/);
 assert.match(entry, /protectedAdmin/);
 assert.match(entry, /ingestPrivateMedicalKnowledge/);
 
@@ -71,6 +71,6 @@ assert.match(evidenceStore, /neurophysiology/);
 assert.match(openRegistry, /AANEM/);
 assert.match(openRegistry, /IFCN/);
 assert.match(openRegistry, /ILAE/);
-assert.match(entry, /\\/v1\\/admin\\/medical\\/inventory/);
+assert.match(entry, /\/v1\/admin\/medical\/inventory/);
 
 console.log("medical knowledge inventory tests: PASS");
