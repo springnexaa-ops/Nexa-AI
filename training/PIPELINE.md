@@ -5,7 +5,7 @@
 1. Register an approved dataset manifest.
 2. Validate provenance, permission and de-identification.
 3. Verify checksums.
-4. Preprocess into a reproducible intermediate format.
+4. Import an approved, externally prepared intermediate dataset with provenance and checksum verification.
 5. Create leakage-resistant train/validation/test splits.
 6. Train a research candidate.
 7. Run medical, safety, privacy and regression evaluations.
@@ -18,7 +18,7 @@
 Build domain-adaptation and representation-learning experiments using approved/licensed medical material.
 
 ### Neurophysiology
-Build signal preprocessing and classification datasets for EEG/EDF first, followed by EMG/NCS, VEP, BERA and RNST.
+Consume approved, externally prepared EEG/EDF and later EMG/NCS, VEP, BERA and RNST datasets. NEXA does not implement the raw EDF preprocessing engine in this project.
 
 ## Data boundary
 
