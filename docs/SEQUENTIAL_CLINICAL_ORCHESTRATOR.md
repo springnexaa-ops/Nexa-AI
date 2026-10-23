@@ -13,9 +13,16 @@ Implement a Nexa-owned, model-agnostic sequential clinical decision-support work
 5. **Safety review:** check red flags, dangerous alternatives, contraindications, data conflicts, and uncertainty. Critical flags stop automated progression.
 6. **Clinician review:** present the structured assessment and evidence for review, amendment, rejection, and approval by an appropriately qualified clinician.
 
-## Implementation added
+## Implementation currently on the feature branch
 
-The new TypeScript module in src/sequential-clinical-orchestrator.ts defines workflow types, the stage-handler contract, audit events, safety-stop behavior, and a clinician-facing summary. It is a coordination scaffold: it does not yet connect to a model provider, medical evidence retriever, patient store, or clinical user interface.
+- `src/sequential-clinical-orchestrator.ts` implements the ordered stage contract, returned-for-information gate, critical safety stop, audit events, and clinician-review summary.
+- `src/core-worker.ts` routes medical chat requests through six sequential Cloudflare Workers AI calls using the existing `@cf/zai-org/glm-4.7-flash` default (or an explicitly requested Cloudflare `@cf/*` model). Non-medical chat retains the existing single-response route.
+- The six stages are intake, problem representation, provisional differential, evidence review, safety review, and clinician-review synthesis. Each stage receives the prior stage summaries; recent conversation turns are included as context.
+- `src/sequential-medical-evidence-adapter.ts` connects the existing Nexa evidence registry to the workflow and preserves source-access limitations. Existing live evidence chunks are included by the outer medical middleware when available.
+- The response includes a workflow ID, stage audit events, workflow status, and an explicit clinician-approval requirement. Existing medical audit handling continues to record evidence-linked requests and answers when live evidence was retrieved.
+- Model output is schema-checked. Invalid or failed stages fail closed; no automated clinical approval, test order, or prescription is issued.
+
+This is an integrated feature-branch implementation, not yet a validated clinical product. Stage events are returned in the response; durable per-stage audit persistence, full patient-record integration, UI workflow state, clinician actions, and end-to-end validation remain outstanding.
 
 ## Production integration plan
 
