@@ -8,7 +8,7 @@ assert.equal(scoreMedicalKnowledgeLexically("VEP BERA", "median nerve conduction
 const ranked = rankMedicalKnowledge("needle EMG MUAP", [
   { id: "a", text: "EEG recording montage and seizure patterns" },
   { id: "b", text: "Needle EMG assesses MUAP morphology and recruitment" },
-  { id: "c", text: "Motor and sensory nerve conduction studies" }
+  { id: "c", text: "Needle electrode EMG recording with motor unit potentials" }
 ], 2);
 assert.equal(ranked[0]?.id, "b");
 assert.equal(ranked.length, 2);
