@@ -37,9 +37,8 @@ export function rankMedicalKnowledge<T extends { id: string; text: string }>(
   limit = 8
 ): Array<T & { score: number }> {
   return records
-    .map((record, index) => ({ ...record, score: scoreMedicalKnowledgeLexically(query, record.text), _index: index }))
+    .map(record => ({ ...record, score: scoreMedicalKnowledgeLexically(query, record.text) }))
     .filter(record => record.score > 0)
-    .sort((a, b) => b.score - a.score || a._index - b._index)
-    .slice(0, Math.min(Math.max(Math.trunc(limit) || 1, 1), 20))
-    .map(({ _index: _ignored, ...record }) => record);
+    .sort((a, b) => b.score - a.score)
+    .slice(0, Math.min(Math.max(Math.trunc(limit) || 1, 1), 20));
 }
