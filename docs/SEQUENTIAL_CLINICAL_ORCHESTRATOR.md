@@ -16,9 +16,10 @@ Implement a Nexa-owned, model-agnostic sequential clinical decision-support work
 ## Implementation currently on the feature branch
 
 - `src/sequential-clinical-orchestrator.ts` implements the ordered stage contract, returned-for-information gate, critical safety stop, audit events, and clinician-review summary.
-- `src/core-worker.ts` routes medical chat requests through six sequential Cloudflare Workers AI calls using the existing `@cf/zai-org/glm-4.7-flash` default (or an explicitly requested Cloudflare `@cf/*` model). Non-medical chat retains the existing single-response route.
+- `src/core-worker.ts` routes clinical-reasoning requests through six sequential model calls. It supports an OpenAI-compatible self-hosted endpoint and retains Cloudflare Workers AI as a compatibility fallback until a self-hosted endpoint is configured. Non-clinical chat retains the existing chat route.
 - The six stages are intake, problem representation, provisional differential, evidence review, safety review, and clinician-review synthesis. Each stage receives the prior stage summaries; recent conversation turns are included as context.
 - `src/sequential-medical-evidence-adapter.ts` connects the existing Nexa evidence registry to the workflow and preserves source-access limitations. Existing live evidence chunks are included by the outer medical middleware when available.
+- `src/medical-knowledge-retrieval.ts` provides deterministic lexical retrieval without hosted embeddings; private-book ingestion and corpus queries no longer require Cloudflare AI embedding calls.
 - The response includes a workflow ID, stage audit events, workflow status, and an explicit clinician-approval requirement. Existing medical audit handling continues to record evidence-linked requests and answers when live evidence was retrieved.
 - Model output is schema-checked. Invalid or failed stages fail closed; no automated clinical approval, test order, or prescription is issued.
 
