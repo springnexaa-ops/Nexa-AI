@@ -181,13 +181,13 @@ export async function runSequentialClinicalWorkflow(
       return state;
     }
 
-    if (result.missingInformation.length > 0 && stage !== "intake") {
+    if (result.missingInformation.length > 0) {
       state.status = "awaiting_clinician";
       state.audit.push({
         stage,
         at: now(),
         event: "returned_for_information",
-        note: "Additional information is needed before assessment can be completed.",
+        note: stage === "intake" ? "Essential intake information is needed before assessment can continue." : "Additional information is needed before assessment can be completed.",
       });
       await dependencies.persistAudit?.(structuredClone(state));
       return state;
