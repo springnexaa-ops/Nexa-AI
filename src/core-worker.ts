@@ -85,6 +85,11 @@ async function runSequentialMedicalAssessment(env:any, msgs:Message[], requested
     const qs=intake.questionsToAsk.length?intake.questionsToAsk:intake.missingInformation;
     return {state,content:`**Nexa AI — more information needed**\n\nBefore forming a useful provisional assessment, please clarify:\n${qs.map((q:string)=>"- "+q).join("\n")}\n\nThis is an information-gathering step, not a diagnosis.`};
   }
+  if(state.status==="awaiting_clinician"&&state.currentStage!=="clinician_review"){
+    const stopped=state.results[state.currentStage];
+    const qs=[...(stopped?.questionsToAsk||[]),...(stopped?.missingInformation||[])];
+    return {state,content:qs.length?`**Nexa AI — clarification required**\n\nThe sequential assessment paused at ${state.currentStage.replace(/_/g," ")} because information is insufficient to proceed safely:\n${[...new Set(qs)].map((q:string)=>"- "+q).join("\n")}\n\nPlease provide the missing information for clinician-supervised review.`:`**Nexa AI — assessment paused**\n\nThe ${state.currentStage.replace(/_/g," ")} stage could not be completed reliably. No diagnostic assessment was approved. Please retry or refer the case to a qualified clinician.`};
+  }
   const lines:string[]=["**Nexa AI — sequential clinical decision-support draft**","", "This is a provisional, evidence-aware draft for qualified clinician review, not a confirmed diagnosis or treatment order.",""];
   const pr=state.results.problem_representation, diff=state.results.differential, ev=state.results.evidence_review, safety=state.results.safety_review, final=state.results.clinician_review;
   if(pr?.summary)lines.push("**Problem representation**",pr.summary,"");
