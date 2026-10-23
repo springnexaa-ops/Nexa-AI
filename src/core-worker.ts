@@ -58,6 +58,7 @@ async function answer(env:any,msgs:Message[],provider="auto",requestedModel?:str
   if(!["auto","cloudflare","medical","self-hosted"].includes(selected)) throw new Error("unsupported_model_provider");
   if(selected==="self-hosted")return selfHosted(env,msgs,requestedModel);
   if(selected==="medical")return medical(env,msgs,requestedModel||MEDICAL_DEFAULT);
+  if(selected==="cloudflare")return cloudflare(env,msgs,requestedModel?.startsWith("@cf/")?requestedModel:FAST_MODEL);
   return runModel(env,msgs,requestedModel||FAST_MODEL);
 }
 
