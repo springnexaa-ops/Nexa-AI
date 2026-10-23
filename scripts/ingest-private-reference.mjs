@@ -37,20 +37,23 @@ for (const block of sourceBlocks) {
     if (chunk.length > 80) chunks.push(chunk);
   }
 }
-if (chunks.length > 2000) throw new Error(`Too many chunks (${chunks.length}); split the reference into smaller source files`);
 console.log(JSON.stringify({ sourceId, version: rawVersion, sha256: digest, characters: text.length, chunks: chunks.length }));
 const endpoint = baseUrl + "/v1/admin/medical/private-knowledge/append";
-const payload = { sourceId, version: rawVersion.slice(0, 120), chunks };
-const response = await fetch(endpoint, {
-  method: "POST",
-  headers: { "content-type": "application/json", authorization: "Bearer " + token },
-  body: JSON.stringify(payload),
-  signal: AbortSignal.timeout(30000)
-});
-const body = await response.text();
-if (!response.ok) {
-  console.error(`Nexa ingestion failed (HTTP ${response.status}): ${body.slice(0, 2000)}`);
-  process.exit(1);
+let accepted = 0;
+for (let offset = 0; offset < chunks.length; offset += 70) {
+  const batch = chunks.slice(offset, offset + 70);
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: "Bearer " + token },
+    body: JSON.stringify({ sourceId, version: rawVersion.slice(0, 120), chunks: batch }),
+    signal: AbortSignal.timeout(30000)
+  });
+  const body = await response.text();
+  if (!response.ok) {
+    console.error(`Nexa ingestion failed at batch ${Math.floor(offset / 70) + 1} (HTTP ${response.status}): ${body.slice(0, 2000)}`);
+    process.exit(1);
+  }
+  accepted += batch.length;
+  console.log(`Accepted ${accepted}/${chunks.length} chunks; response: ${body}`);
 }
-console.log("Nexa response:", body);
 console.log("Important: verify GET /v1/admin/medical/inventory and query /v1/admin/medical/private-knowledge/search before treating this version as active.");
