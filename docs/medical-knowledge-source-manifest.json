@@ -1,0 +1,114 @@
+{
+  "schemaVersion": "1.0.0",
+  "purpose": "Track candidate medical references for private Nexa corpus ingestion without storing copyrighted source files in Git.",
+  "policy": {
+    "sourceFilesInRepository": false,
+    "ingestionRequiresRightsReview": true,
+    "deduplicateBySha256": true,
+    "preservePageProvenance": true,
+    "activateOnlyAfterSmokeTests": true
+  },
+  "sources": [
+    {
+      "sourceId": "eeg-aes-introductory-atlas",
+      "domain": ["EEG", "epilepsy", "neurophysiology"],
+      "libraryFiles": ["867010557-atlas-academia-americana-epilepsia.pdf"],
+      "title": "Electroencephalography (EEG): An Introductory Text and Atlas of Normal and Abnormal Findings in Adults, Children and Infants",
+      "sourceType": "textbook-atlas",
+      "rightsReview": "required",
+      "ingestionStatus": "not-verified",
+      "runtimeVerification": "pending"
+    },
+    {
+      "sourceId": "emg-neuromuscular-disorders-preston-shapiro-4e",
+      "domain": ["EMG", "NCS", "neuromuscular-disorders"],
+      "libraryFiles": ["EMG NCS.pdf", "EMG NCS(1).pdf", "EMG NCS(2).pdf"],
+      "title": "Electromyography and Neuromuscular Disorders: Clinical-Electrophysiologic-Ultrasound Correlations",
+      "edition": "4",
+      "year": 2021,
+      "isbn": "978-0-323-66180-5",
+      "sourceType": "textbook",
+      "rightsReview": "required",
+      "ingestionStatus": "not-verified",
+      "deduplication": "compare-sha256-before-ingestion",
+      "runtimeVerification": "pending"
+    },
+    {
+      "sourceId": "niedermeyer-eeg-excerpts",
+      "domain": ["EEG", "evoked-potentials", "continuous-monitoring"],
+      "libraryFiles": ["EEG_explanation.pdf", "EEG_explanation(1).pdf"],
+      "title": "Niedermeyer's Electroencephalography: Basic Principles, Clinical Applications, and Related Fields",
+      "year": 2010,
+      "sourceType": "excerpts",
+      "rightsReview": "required",
+      "ingestionStatus": "not-verified",
+      "runtimeVerification": "pending"
+    },
+    {
+      "sourceId": "epilepsy-notes-2019",
+      "domain": ["epilepsy", "EEG"],
+      "libraryFiles": ["Epilepsy-Notes-PDF-Book-2019-low.pdf"],
+      "sourceType": "notes",
+      "rightsReview": "required",
+      "ingestionStatus": "not-verified",
+      "runtimeVerification": "pending"
+    },
+    {
+      "sourceId": "acns-guideline-7-eeg-reporting",
+      "domain": ["EEG", "reporting-guidelines"],
+      "libraryFiles": ["Guideline7-GuidelinesforEEGReporting_v1.pdf"],
+      "title": "Guideline 7: Guidelines for EEG Reporting",
+      "sourceType": "professional-guideline",
+      "rightsReview": "verify-permitted-use",
+      "ingestionStatus": "not-verified",
+      "runtimeVerification": "pending"
+    },
+    {
+      "sourceId": "score-2017-eeg-reporting",
+      "domain": ["EEG", "reporting-standards"],
+      "libraryFiles": ["SCORE-2017.pdf"],
+      "title": "Standardized Computer-based Organized Reporting of EEG (SCORE)",
+      "year": 2017,
+      "sourceType": "reporting-standard",
+      "rightsReview": "verify-permitted-use",
+      "ingestionStatus": "not-verified",
+      "runtimeVerification": "pending"
+    },
+    {
+      "sourceId": "nexa-eeg-report-templates",
+      "domain": ["EEG", "reporting", "internal-workflow"],
+      "libraryFiles": [
+        "NEXA_EEG_One_Page_International_Report_Format.pdf",
+        "NEXA_EEG_International_Structured_Report_Format.pdf"
+      ],
+      "sourceType": "internal-template",
+      "rightsReview": "confirm-current-approved-version",
+      "ingestionStatus": "not-verified",
+      "runtimeVerification": "pending"
+    }
+  ],
+  "notYetClassified": [
+    "Pasted text(20261002-100751).txt",
+    "Pasted text(20261002-100905).txt",
+    "Pasted text(20261002-101035).txt",
+    "Pasted text(20261002-102702).txt"
+  ],
+  "excludedFromKnowledgeIngestionPendingPrivacyReview": [
+    "MarkPages-5.pdf"
+  ],
+  "missingDomainsToAssess": ["VEP", "BAER/BERA", "RNS"],
+  "requiredIngestionRecordFields": [
+    "sourceId",
+    "sha256",
+    "bibliographicMetadata",
+    "rightsBasis",
+    "editionOrVersion",
+    "ingestedAt",
+    "extractorVersion",
+    "chunkCount",
+    "pageReferenceCoverage",
+    "smokeTestResults",
+    "corpusVersion",
+    "activationStatus"
+  ]
+}
