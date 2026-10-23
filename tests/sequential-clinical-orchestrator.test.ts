@@ -84,6 +84,19 @@ assert.equal(needsInfo.status, "awaiting_clinician");
 assert.equal(needsInfo.results.evidence_review, undefined);
 assert.ok(needsInfo.audit.some((event) => event.event === "returned_for_information"));
 
+const intakeNeedsInfo = await runSequentialClinicalWorkflow(clinicalCase, {
+  handlers: handlers({
+    intake: async () => result("intake", {
+      questionsToAsk: ["When did symptoms begin?"],
+      missingInformation: ["Symptom onset"],
+    }),
+  }),
+  createId: () => "workflow-intake-info",
+});
+assert.equal(intakeNeedsInfo.status, "awaiting_clinician");
+assert.equal(intakeNeedsInfo.results.problem_representation, undefined);
+assert.ok(intakeNeedsInfo.audit.some((event) => event.stage === "intake" && event.event === "returned_for_information"));
+
 const failed = await runSequentialClinicalWorkflow(clinicalCase, {
   handlers: handlers({
     evidence_review: async () => { throw new Error("simulated provider failure"); },
