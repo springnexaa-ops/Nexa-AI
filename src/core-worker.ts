@@ -33,7 +33,7 @@ async function answer(env:any,msgs:Message[],provider="auto",requestedModel?:str
 
 
 function requiresSequentialClinicalWorkflow(query:string):boolean {
-  return /\\b(diagnos(?:e|is|tic|ing)?|differential|clinical case|clinical reasoning|patient presents|patient has|case report|symptoms? of|my symptoms|my test results|interpret(?:ation|ing)? (?:of )?(?:eeg|ncs|emg|vep|bera|baer|ecg|ekg|mri|ct|lab|test|report)|what could cause)\\b/i.test(query);
+  return /\b(diagnos(?:e|is|tic|ing)?|differential|clinical case|clinical reasoning|patient presents|patient has|case report|symptoms? of|my symptoms|my test results|interpret(?:ation|ing)? (?:of )?(?:eeg|ncs|emg|vep|bera|baer|ecg|ekg|mri|ct|lab|test|report)|what could cause)\b/i.test(query);
 }
 type SequentialStageOutput = Omit<StageResult, "stage">;
 function parseSequentialStage(content:string, stage:ClinicalStage):StageResult {
