@@ -54,7 +54,7 @@ async function runSequentialMedicalAssessment(env:any, msgs:Message[], requested
   const model=requestedModel?.startsWith("@cf/")?requestedModel:MEDICAL_DEFAULT;
   const baseSystem=msgs.find(m=>m.role==="system")?.content||MEDICAL_SYSTEM;
   const evidencePack=retrieveSequentialEvidence(userText,8);
-  const clinicalCase:ClinicalCase={caseId:crypto.randomUUID(),patientContext:{},presentingConcern:userText.slice(0,4000),findings:[]};
+  const clinicalCase:ClinicalCase={caseId:crypto.randomUUID(),patientContext:{relevantHistory:msgs.filter(m=>m.role!=="system").slice(-8).map(m=>`${m.role}: ${m.content.slice(0,2000)}`)},presentingConcern:userText.slice(0,4000),findings:[]};
   const stages:ClinicalStage[]=["intake","problem_representation","differential","evidence_review","safety_review","clinician_review"];
   const handlers=Object.fromEntries(stages.map(stage=>[stage,async ({clinicalCase:cc,previous}:any):Promise<StageResult>=>{
     const previousSummary=Object.entries(previous).map(([name,v]:[string,any])=>({stage:name,summary:v.summary,questionsToAsk:v.questionsToAsk,differential:v.differential,safetyFlags:v.safetyFlags,missingInformation:v.missingInformation,uncertainty:v.uncertainty})).slice(-5);
