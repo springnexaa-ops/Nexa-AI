@@ -10,7 +10,19 @@ This procedure imports **locally extracted, rights-cleared text** into the authe
 4. Review the text for extraction quality and record the original file's SHA-256, title, author, edition, publication year, rights basis and extraction tool/version in your source register.
 5. Keep the original PDFs and extracted text in an access-controlled SpringNexa location, never in the public Git repository.
 
-## Run the ingestion client
+## GitHub website-only environment
+
+The script below **cannot be run from the GitHub file editor**. GitHub's website can store/review code and show Actions results, but it does not execute a local Node.js script just because the script is in the repository.
+
+For a no-terminal workflow:
+
+1. Keep the ingestion code and this guide in the repository; do **not** commit extracted textbook text, PDFs, patient records, or an administrator token.
+2. Confirm that Nexa-AI is deployed and obtain its actual HTTPS base URL. `https://ai.springnexa.in` is only an example unless that hostname is confirmed to be your deployed API.
+3. A repository administrator must configure the runtime's `ADMIN_TOKEN` securely. Never paste the token into a GitHub issue, commit, workflow log, or chat.
+4. The current implementation has an authenticated API endpoint but **does not yet include a browser-based upload screen or a GitHub Actions workflow that accepts private source files**. Therefore a GitHub-website-only user cannot complete ingestion end-to-end with the current UI. The safe next development step is a server-side authenticated admin upload page (or a reviewed, manually triggered workflow that retrieves a rights-cleared file from a private, access-controlled source without logging its contents). Do not solve this by putting the token or textbook text in repository files.
+5. Until that interface exists, treat the knowledge-ingestion workflow as prepared but **not executed**.
+
+## Run the ingestion client (terminal-capable environments only)
 
 Requires Node.js 20+ and a valid Nexa administrator token. Do not put the token in the command history or source code; use a secret environment injection mechanism.
 
